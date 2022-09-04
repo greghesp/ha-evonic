@@ -3,7 +3,7 @@
 
 # Evonic Fires
 
-Evonic Fires integration for bringing your Evonic Fire into Home Assistant.  
+Unofficial Evonic Fires integration for bringing your Evonic Fire into Home Assistant.  
 
 Supports the following features:
 
