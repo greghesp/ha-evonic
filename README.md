@@ -24,3 +24,10 @@ This has currently only been tested using the following devices:
 - Evonic Linnea
 
 This Custom Component may work for more devices. Please let me know if it supports your fire, or raise an issue or PR
+
+## Usage
+
+Add this repo to the HACS custom repository list in your Home Assistant instance, and install.
+
+As this integration does not use cloud services, there isn't a way to get the device IP address automatically. 
+It if therefore recommend to give your fire a static IP address to prevent the connection for breaking in the event the fires IP address changes.
