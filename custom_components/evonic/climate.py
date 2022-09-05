@@ -35,8 +35,6 @@ async def async_setup_entry(
 class EvonicHeater(EvonicEntity, ClimateEntity):
     """ Defined the Climate Light """
 
-    _attr_icon = "mdi:fire"
-    # _attr_entity_category = EntityCategory.CONFIG
     _attr_name = "Heater"
 
     def __init__(self, coordinator: EvonicCoordinator) -> None:

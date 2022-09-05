@@ -34,7 +34,6 @@ class EvonicFeatureLight(EvonicEntity, LightEntity):
     """ Defined the Feature Light """
 
     _attr_icon = "mdi:led-strip-variant"
-    # _attr_entity_category = EntityCategory.CONFIG
     _attr_name = "Feature Light"
 
     def __init__(self, coordinator: EvonicCoordinator) -> None:
@@ -72,7 +71,6 @@ class EvonicFireLight(EvonicEntity, LightEntity):
         self._attr_support_color_modes: set[ColorMode] = set()
         self._attr_support_color_modes.add(ColorMode.ONOFF)
         self._attr_icon = "mdi:led-strip-variant"
-        self._attr_entity_category = EntityCategory.CONFIG
         self._attr_name = "Fire Lighting"
         self._attr_supported_features = LightEntityFeature.EFFECT
         self._attr_unique_id = f"{coordinator.data.info.ssdp}_fire_light"
