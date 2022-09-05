@@ -12,17 +12,9 @@ jobs:
       contents: write
     steps:
     - uses: actions/checkout@master
-    - name: Archive Release
-      uses: thedoctor0/zip-release@main
-      with:
-        path: "custom_components"
-        type: 'zip'
-        filename: 'release.zip'
-        exclusions: '*.git* /*node_modules/* .editorconfig .idea'
     - name: Create Release
       uses: ncipollo/release-action@v1.10.0
       with:
-        artifacts: "release.zip"
         bodyFile: "release_notes.md"
         token: ${{ secrets.BUILDRELEASE }}
 

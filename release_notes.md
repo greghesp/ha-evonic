@@ -1,5 +1,5 @@
 ### Release Notes
 
-Changes in 0.0.3:
+Changes in 0.0.5:
 
-- Removed Config entity configuration
+- Minor release bug fixes
