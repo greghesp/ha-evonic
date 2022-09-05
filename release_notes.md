@@ -1,5 +1,5 @@
 ### Release Notes
 
-Changes in 0.0.2:
+Changes in 0.0.3:
 
-- Added Automatic Github Action
+- Removed Config entity configuration
