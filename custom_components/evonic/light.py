@@ -34,6 +34,7 @@ class EvonicFeatureLight(EvonicEntity, LightEntity):
     """ Defined the Feature Light """
 
     _attr_icon = "mdi:led-strip-variant"
+    # _attr_entity_category = EntityCategory.CONFIG
     _attr_name = "Feature Light"
 
     def __init__(self, coordinator: EvonicCoordinator) -> None:
@@ -45,7 +46,6 @@ class EvonicFeatureLight(EvonicEntity, LightEntity):
         if self.coordinator.data.info.on:
             return True
         return False
-
 
     @property
     def is_on(self) -> bool:
