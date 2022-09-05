@@ -16,7 +16,7 @@ jobs:
       with:
         directory: "custom_components"
         type: 'zip'
-        filename: 'release.zip'
+        filename: './release.zip'
         exclusions: '*.git* /*node_modules/* .editorconfig .idea'
     - name: Create Release
       uses: ncipollo/release-action@v1.10.0
