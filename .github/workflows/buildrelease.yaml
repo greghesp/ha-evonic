@@ -15,6 +15,7 @@ jobs:
     - name: Archive Release
       uses: thedoctor0/zip-release@main
       with:
+        directory: "custom_components"
         type: 'zip'
         filename: 'release.zip'
         exclusions: '*.git* /*node_modules/* .editorconfig .idea'
