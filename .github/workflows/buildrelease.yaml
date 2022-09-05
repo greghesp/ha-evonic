@@ -15,9 +15,9 @@ jobs:
     - name: Archive Release
       uses: thedoctor0/zip-release@main
       with:
-        directory: "custom_components"
+        path: "custom_components"
         type: 'zip'
-        filename: './release.zip'
+        filename: 'release.zip'
         exclusions: '*.git* /*node_modules/* .editorconfig .idea'
     - name: Create Release
       uses: ncipollo/release-action@v1.10.0
