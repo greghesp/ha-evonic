@@ -3,6 +3,8 @@
 
 # Evonic Fires
 
+[Home Assistant Community Thread](https://community.home-assistant.io/t/evonic-fires-custom-integration/457118)
+
 Unofficial Evonic Fires integration for bringing your Evonic Fire into Home Assistant.  
 
 Supports the following features:
@@ -31,3 +33,4 @@ Add this repo to the HACS custom repository list in your Home Assistant instance
 
 As this integration does not use cloud services, there isn't a way to get the device IP address automatically. 
 It if therefore recommend to give your fire a static IP address to prevent the connection for breaking in the event the fires IP address changes.
+
