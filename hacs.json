@@ -1,3 +1,5 @@
 {
-  "name": "Evonic Fires"
+  "name": "Evonic Fires",
+  "zip_release": true,
+  "filename": "release.zip"
 }
