@@ -1,5 +1,5 @@
 ### Release Notes
 
-Changes in 0.0.5:
+Changes in 0.0.6:
 
-- Minor release bug fixes
+- Icon updates
