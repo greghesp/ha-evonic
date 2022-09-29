@@ -12,7 +12,7 @@ class EvonicEntity(CoordinatorEntity[EvonicCoordinator]):
     @property
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
-            identifiers={(DOMAIN, self.platform.config_entry.data[CONF_HOST])},
+            identifiers={(DOMAIN, self.coordinator.data.network.mac)},
             name=self.coordinator.data.info.ssdp,
             manufacturer=BRAND,
             model=self.coordinator.data.info.ssdp,

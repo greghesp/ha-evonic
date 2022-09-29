@@ -1,5 +1,5 @@
 ### Release Notes
 
-Changes in 0.0.6:
+Changes in 0.0.10:
 
-- Icon updates
+- Reverted breaking changes
