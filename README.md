@@ -5,7 +5,7 @@
 
 [Home Assistant Community Thread](https://community.home-assistant.io/t/evonic-fires-custom-integration/457118)
 
-Unofficial Evonic Fires integration for bringing your Evonic Fire into Home Assistant.  
+Unofficial Evonic Fires integration for bringing your Evonic Fire into Home Assistant.  Also supports electric fires from European Home and Element4
 
 Supports the following features:
 
