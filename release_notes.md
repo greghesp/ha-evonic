@@ -1,5 +1,5 @@
 ### Release Notes
 
-Changes in 0.0.11:
+Changes in 0.0.12:
 
-- Fix breaking changes and bad merge
+- Fix fahrenheit bug
