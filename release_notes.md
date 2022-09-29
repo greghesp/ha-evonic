@@ -1,5 +1,6 @@
 ### Release Notes
 
-Changes in 0.0.6:
+Changes in 0.0.7:
 
-- Icon updates
+- Exposed device mac address
+- Bump library version
