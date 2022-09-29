@@ -1,6 +1,5 @@
 ### Release Notes
 
-Changes in 0.0.7:
+Changes in 0.0.9:
 
-- Exposed device mac address
-- Bump library version
+- Exposed device mac address (Fixed)
