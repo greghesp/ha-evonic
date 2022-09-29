@@ -1,11 +1,11 @@
 {
   "domain": "evonic",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "name": "Evonic",
   "config_flow": true,
   "documentation": "https://github.com/greghesp/hacs-evonic",
   "issue_tracker": "https://github.com/greghesp/hacs-evonic/issues",
-  "requirements": ["pyevonic"],
+  "requirements": ["pyevonic==0.0.11"],
   "codeowners": ["@greghesp"],
   "iot_class": "local_push"
 }

@@ -1,5 +1,5 @@
 ### Release Notes
 
-Changes in 0.0.10:
+Changes in 0.0.11:
 
-- Reverted breaking changes
+- Fix breaking changes and bad merge
