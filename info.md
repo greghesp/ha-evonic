@@ -17,6 +17,8 @@ Supports the following features:
 
 If you like this component, please give it a star on [github](https://github.com/greghesp/hacs-evonic).
 
+Uses [pyevonic](https://github.com/greghesp/python-evonic) to interface with devices
+
 ##  Supported Fires
 
 This has currently only been tested using the following devices:
