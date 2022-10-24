@@ -14,7 +14,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .coordinator import EvonicCoordinator
 from .const import DOMAIN, LOGGER
 from .models import EvonicEntity
-from .pyevonic import Device as EvonicDevice
+from pyevonic import Device as EvonicDevice
 from homeassistant.const import (
     POWER_WATT,
     SIGNAL_STRENGTH_DECIBELS_MILLIWATT)
