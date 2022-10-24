@@ -60,6 +60,7 @@ class EvonicCoordinator(DataUpdateCoordinator[EvonicDevice]):
     async def _async_update_data(self) -> EvonicDevice:
         try:
             device = await self.evonic.get_device()
+            LOGGER.debug(device.__dict__)
         except EvonicError as error:
             raise UpdateFailed(f"Invalid response from API: {error}") from error
 
@@ -67,6 +68,3 @@ class EvonicCoordinator(DataUpdateCoordinator[EvonicDevice]):
             self.use_websocket()
 
         return device
-
-
-

@@ -1,5 +1,6 @@
 ### Release Notes
 
-Changes in 0.0.12:
+Changes in 0.1.0:
 
-- Fix fahrenheit bug
+- Added sensors for power consumption
+- Added sensors for WiFi Strength
