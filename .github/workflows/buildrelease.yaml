@@ -16,4 +16,3 @@ jobs:
       uses: ncipollo/release-action@v1.10.0
       with:
         bodyFile: "release_notes.md"
-
