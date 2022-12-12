@@ -38,6 +38,8 @@ As this integration does not use cloud services, there isn't a way to get the de
 It if therefore recommend to give your fire a static IP address to prevent the connection for breaking in the event the fires IP address changes.
 
 ## Release Notes
+**0.1.3**
+- Added last ping sensor
 
 **0.1.2**
 - Sensor bug fix

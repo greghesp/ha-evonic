@@ -4,7 +4,8 @@ from typing import Any
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import datetime as dt
 from homeassistant.helpers.typing import StateType
 
 from homeassistant.core import HomeAssistant, callback
@@ -26,11 +27,13 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 
+
 @dataclass
 class EvonicSensorEntityDescriptionMixin:
     """Mixin for required keys."""
 
     value_fn: Callable[[EvonicDevice], datetime | StateType]
+
 
 @dataclass
 class EvonicSensorEntityDescription(
@@ -40,11 +43,11 @@ class EvonicSensorEntityDescription(
 
     exists_fn: Callable[[EvonicDevice], bool] = lambda _: True
 
+
 SENSORS: tuple[EvonicSensorEntityDescription, ...] = (
     EvonicSensorEntityDescription(
         key="wifi_signal",
         name="Wi-Fi Signal",
-        icon="mdi:wifi",
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
         state_class=SensorStateClass.MEASUREMENT,
@@ -76,7 +79,8 @@ SENSORS: tuple[EvonicSensorEntityDescription, ...] = (
         entity_category=EntityCategory.DIAGNOSTIC,
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda device: (device.info.led_power if device.info.on else 0) + (device.info.heater_power if device.climate.heating else 0),
+        value_fn=lambda device: (device.info.led_power if device.info.on else 0) + (
+            device.info.heater_power if device.climate.heating else 0),
     ),
     EvonicSensorEntityDescription(
         key="cost_per_hour",
@@ -89,25 +93,33 @@ SENSORS: tuple[EvonicSensorEntityDescription, ...] = (
     EvonicSensorEntityDescription(
         key="cost_per_kwh",
         name="Cost per kWh",
-        
         entity_category=EntityCategory.DIAGNOSTIC,
         device_class=SensorDeviceClass.MONETARY,
         value_fn=lambda device: device.info.cost if device.info.cost else 0,
     ),
+    EvonicSensorEntityDescription(
+        key="last_ping",
+        name="Last Ping",
+        entity_category=EntityCategory.DIAGNOSTIC,
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda device: get_timestamp(device.info.last_ping),
+    ),
 )
 
+
 async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up WLED sensor based on a config entry."""
+    """Set up Evonic sensor based on a config entry."""
     coordinator: EvonicCoordinator = hass.data[DOMAIN][entry.entry_id]
     async_add_entities(
         EvonicSensorEntity(coordinator, description)
         for description in SENSORS
         if description.exists_fn(coordinator.data)
     )
+
 
 def calculate_cost(device):
     if device.climate.heating:
@@ -122,7 +134,9 @@ def calculate_cost(device):
         return 0
 
 
-
+def get_timestamp(time):
+    datetime_object = dt.datetime.strptime(time, '%H:%M:%S')
+    return dt.datetime.combine(date=dt.date.today(), time=datetime_object.time(), tzinfo=dt.datetime.now().astimezone().tzinfo)
 
 class EvonicSensorEntity(EvonicEntity, SensorEntity):
     """Defines a Evonic sensor entity."""
@@ -130,9 +144,9 @@ class EvonicSensorEntity(EvonicEntity, SensorEntity):
     entity_description: EvonicSensorEntityDescription
 
     def __init__(
-        self,
-        coordinator: EvonicCoordinator,
-        description: EvonicSensorEntityDescription,
+            self,
+            coordinator: EvonicCoordinator,
+            description: EvonicSensorEntityDescription,
     ) -> None:
         """Initialize a Evonic sensor entity."""
         super().__init__(coordinator=coordinator)
