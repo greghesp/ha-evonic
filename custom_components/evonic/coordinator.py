@@ -11,9 +11,10 @@ from .const import DOMAIN, LOGGER, SCAN_INTERVAL
 
 
 class EvonicCoordinator(DataUpdateCoordinator[EvonicDevice]):
+    """Class to manage fetching Evonic data."""
     config_entry: ConfigEntry
 
-    def __init__(self, hass, *, entry):
+    def __init__(self, hass: HomeAssistant, *, entry: ConfigEntry) -> None:
         self.evonic = Evonic(
             entry.data[CONF_HOST], session=async_get_clientsession(hass)
         )
@@ -23,6 +24,7 @@ class EvonicCoordinator(DataUpdateCoordinator[EvonicDevice]):
     @callback
     def use_websocket(self) -> None:
         async def listen() -> None:
+            """Listen for state changes via WebSocket."""
             try:
                 await self.evonic.connect()
             except EvonicError as err:
@@ -47,10 +49,12 @@ class EvonicCoordinator(DataUpdateCoordinator[EvonicDevice]):
                 self.unsub()
                 self.unsub = None
 
-        async def close_websocket():
+        async def close_websocket(_: Event) -> None:
+            """Close WebSocket connection."""
             self.unsub = None
             await self.evonic.disconnect()
 
+        # Clean disconnect WebSocket on Home Assistant shutdown
         self.unsub = self.hass.bus.async_listen_once(
             EVENT_HOMEASSISTANT_STOP, close_websocket
         )
@@ -58,6 +62,7 @@ class EvonicCoordinator(DataUpdateCoordinator[EvonicDevice]):
         asyncio.create_task(listen())
 
     async def _async_update_data(self) -> EvonicDevice:
+        """Fetch data from Evonic."""
         try:
             device = await self.evonic.get_device()
             LOGGER.debug(device.__dict__)
