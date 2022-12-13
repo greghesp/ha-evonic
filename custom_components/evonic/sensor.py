@@ -135,8 +135,11 @@ def calculate_cost(device):
 
 
 def get_timestamp(time):
+    if time is None:
+        return dt.datetime.now().astimezone()
+
     datetime_object = dt.datetime.strptime(time, '%H:%M:%S')
-    return dt.datetime.combine(date=dt.date.today(), time=datetime_object.time(), tzinfo=dt.datetime.now().astimezone().tzinfo)
+    return dt.datetime.combine(date=dt.date.today(), time=datetime_object.time(),tzinfo=dt.datetime.now().astimezone().tzinfo)
 
 class EvonicSensorEntity(EvonicEntity, SensorEntity):
     """Defines a Evonic sensor entity."""
