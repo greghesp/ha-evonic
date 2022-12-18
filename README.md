@@ -30,7 +30,7 @@ This Custom Component may work for more devices. Please let me know if it suppor
 
 ## Usage
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=greghesp&repository=hacs-evonic&category=Integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=greghesp&repository=ha-evonic&category=Integration)
 
 Add this repo to the HACS custom repository list in your Home Assistant instance, and install.
 
