@@ -14,6 +14,7 @@ PLATFORMS = (
 )
 
 
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Evoflame Fire from a config entry."""
     coordinator = EvonicCoordinator(hass, entry=entry)

@@ -1,12 +1,18 @@
 {
   "domain": "evonic",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "name": "Evonic",
   "config_flow": true,
   "documentation": "https://github.com/greghesp/hacs-evonic",
   "issue_tracker": "https://github.com/greghesp/hacs-evonic/issues",
-  "requirements": ["pyevonic==0.0.13"],
+  "requirements": [],
   "codeowners": ["@greghesp"],
-  "iot_class": "local_push"
+  "iot_class": "local_push",
+  "ssdp": [
+    {
+      "deviceType": "upnp:rootdevice",
+      "manufacturer": "+44 (0) 1789 263868 sales@evonicfires.co.uk"
+    }
+  ]
 }
 

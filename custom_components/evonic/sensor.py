@@ -15,7 +15,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .coordinator import EvonicCoordinator
 from .const import DOMAIN, LOGGER
 from .models import EvonicEntity
-from pyevonic import Device as EvonicDevice
+from .pyevonic import Device as EvonicDevice
 from homeassistant.const import (
     POWER_WATT,
     SIGNAL_STRENGTH_DECIBELS_MILLIWATT)
@@ -139,7 +139,7 @@ def get_timestamp(time):
         return dt.datetime.now().astimezone()
 
     datetime_object = dt.datetime.strptime(time, '%H:%M:%S')
-    return dt.datetime.combine(date=dt.date.today(), time=datetime_object.time(),tzinfo=dt.datetime.now().astimezone().tzinfo)
+    return dt.datetime.combine(date=dt.date.today(), time=datetime_object.time(), tzinfo=dt.datetime.now().astimezone().tzinfo)
 
 class EvonicSensorEntity(EvonicEntity, SensorEntity):
     """Defines a Evonic sensor entity."""
