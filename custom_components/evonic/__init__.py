@@ -41,8 +41,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         # Ensure disconnected and cleanup stop sub
         await coordinator.evonic.disconnect()
-        if coordinator.unsub:
-            coordinator.unsub()
 
         del hass.data[DOMAIN][entry.entry_id]
 

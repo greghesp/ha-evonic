@@ -60,8 +60,8 @@ class EvonicConfigFlow(ConfigFlow, domain=DOMAIN):
             except EvonicConnectionError:
                 errors["base"] = "cannot_connect"
             else:
-                LOGGER.debug(f"User Input Exists, Flash Chip ID: {device.info.flashChip}")
-                await self.async_set_unique_id(device.info.flashChip)
+                LOGGER.debug(f"User Input Exists, Mac: {device.__dict__}")
+                await self.async_set_unique_id(user_input[CONF_HOST])
                 self._abort_if_unique_id_configured(
                     updates={CONF_HOST: user_input[CONF_HOST]}
                 )

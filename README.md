@@ -17,7 +17,7 @@ Supports the following features:
 
 ![Overview](docs/images/img_1.png)
 
-If you like this component, please give it a star on [github](https://github.com/greghesp/hacs-evonic).
+If you like this component, please give it a star on [github](https://github.com/greghesp/ha-evonic).
 
 ##  Supported Fires
 
@@ -30,14 +30,18 @@ This Custom Component may work for more devices. Please let me know if it suppor
 
 ## Usage
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=greghesp&repository=hacs-evonic)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=greghesp&repository=ha-evonic)
 
 Add this repo to the HACS custom repository list in your Home Assistant instance, and install.
 
 As this integration does not use cloud services, there isn't a way to get the device IP address automatically. 
-It if therefore recommend to give your fire a static IP address to prevent the connection for breaking in the event the fires IP address changes.
+It if therefore recommended giving your fire a static IP address to prevent the connection for breaking in the event the fires IP address changes.
 
 ## Release Notes
+**0.2.0**
+- Fix:  Websocket/API timeout issues where users need to reload integration
+
+
 **0.1.3**
 - Added last ping sensor
 
