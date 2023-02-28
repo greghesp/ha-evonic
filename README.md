@@ -30,9 +30,9 @@ This Custom Component may work for more devices. Please let me know if it suppor
 
 ## Usage
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=greghesp&repository=ha-evonic)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=greghesp&repository=ha-evonic&category=Integration)
 
-Add this repo to the HACS custom repository list in your Home Assistant instance, and install.
+To install, search for `Evonic` in the HACS default repositories, or click the badge above.
 
 As this integration does not use cloud services, there isn't a way to get the device IP address automatically. 
 It if therefore recommended giving your fire a static IP address to prevent the connection for breaking in the event the fires IP address changes.
