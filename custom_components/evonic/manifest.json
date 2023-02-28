@@ -1,6 +1,6 @@
 {
   "domain": "evonic",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "name": "Evonic",
   "config_flow": true,
   "documentation": "https://github.com/greghesp/hacs-evonic",
