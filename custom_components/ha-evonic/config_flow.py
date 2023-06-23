@@ -11,7 +11,7 @@ from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import aiohttp_client
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from pyevonic import Evonic, EvonicConnectionError
+from .pyevonic import Evonic, EvonicConnectionError
 
 from .const import DOMAIN, LOGGER
 

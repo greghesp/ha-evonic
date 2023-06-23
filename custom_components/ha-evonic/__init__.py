@@ -9,8 +9,8 @@ from .coordinator import EvonicCoordinator
 
 PLATFORMS = (
     Platform.LIGHT,
-    Platform.CLIMATE,
-    Platform.SENSOR
+    # Platform.CLIMATE,
+    # Platform.SENSOR
 )
 
 
@@ -36,13 +36,6 @@ async def async_reload_entry(hass, entry):
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        coordinator: EvonicCoordinator = hass.data[DOMAIN][entry.entry_id]
-
-        # Ensure disconnected and cleanup stop sub
-        await coordinator.evonic.disconnect()
-        if coordinator.unsub:
-            coordinator.unsub()
-
         del hass.data[DOMAIN][entry.entry_id]
 
     return unload_ok
