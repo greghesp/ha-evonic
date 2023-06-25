@@ -1,12 +1,12 @@
 {
   "domain": "evonic",
-  "version": "0.3.0",
   "name": "Evonic",
+  "codeowners": ["@greghesp"],
   "config_flow": true,
   "documentation": "https://github.com/greghesp/ha-evonic",
+  "iot_class": "local_push",
   "issue_tracker": "https://github.com/greghesp/ha-evonic/issues",
   "requirements": [],
-  "codeowners": ["@greghesp"],
-  "iot_class": "local_push"
+  "version": "0.3.0"
 }
 
