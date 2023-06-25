@@ -9,8 +9,8 @@ from .coordinator import EvonicCoordinator
 
 PLATFORMS = (
     Platform.LIGHT,
-    # Platform.CLIMATE,
-    # Platform.SENSOR
+    Platform.CLIMATE,
+    Platform.SENSOR,
 )
 
 

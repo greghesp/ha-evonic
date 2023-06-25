@@ -32,84 +32,8 @@ class Evonic:
     request_timeout: float = 8.0
     session: aiohttp.client.ClientSession | None = None
 
-    _client: aiohttp.ClientWebSocketResponse | None = None
     _close_session: bool = False
     _device: Device | None = None
-
-    async def request(self, uri, method, data, host=None, scheme=None):
-        """ Sends a http request to the Evonic Fire
-
-        Args:
-            uri: The URI endpoint to send request to
-            method: HTTP Method
-            data: Request Content
-            host:? Domain to call
-            scheme:? http vs https
-
-        Raises:
-            EvonicError:  Received an unexpected response from the Evonic Fire
-            EvonicConnectionTimeoutError: A timeout occurred while communicating with the Evonic Fire
-            EvonicConnectionError:  A error occurred while communicating with the Evonic Fire
-        """
-
-        if host is None:
-            host = self.host
-
-        if scheme is None:
-            scheme = "http"
-
-        # url = URL.build(scheme=scheme, host=host, path=uri)
-        url = f"http://{host}{uri}"
-
-        if self.session is None:
-            LOGGER.debug("No session exists, using ClientSession")
-            self.session = aiohttp.ClientSession()
-            self._close_session = True
-
-        try:
-            async with async_timeout.timeout(self.request_timeout):
-                response = await self.session.request(method, url, json=data)
-                LOGGER.debug(f"Request Response from {url}:")
-
-            content_type = response.headers.get("Content-Type", "")
-
-            # If response is not 200, log error
-            if (response.status // 100) in [4, 5]:
-                contents = await response.read()
-                response.close()
-
-                if content_type == "application/json":
-                    raise EvonicError(json.loads(contents.decode("utf8")))
-                raise EvonicError(response.status, {"message": contents.decode("utf8")})
-
-            # If response is json, update the device class
-            if "application/json" in content_type:
-                response_data = await response.json()
-
-                if method == "GET" and uri == "/modules.json":
-                    if self._device is None:
-                        self._device = Device(response_data)
-                    self._device.update_from_dict(data=response_data)
-
-                elif method == "GET" and (uri == "/config.options.json" or uri == "/config.admin.json"):
-                    self._device.update_from_dict(data=response_data)
-
-                else:
-                    response_data = await response.json()
-
-            # REST API calls return template strings as text/plain for UI. Do a request to get latest info from fire
-            # after calling. TODO: Break this out so its based on the request, not response
-            if "text/plain" in content_type:
-                return self.request("/config.live.json", "GET", None)
-
-        except asyncio.TimeoutError as exception:
-            raise EvonicConnectionTimeoutError(
-                f"Timeout occurred while connecting to Evonic device at {self.host}") from exception
-        except (aiohttp.ClientError, socket.gaierror) as exception:
-            raise EvonicConnectionError(
-                f"Error occurred while communicating with Evonic device at {self.host}") from exception
-
-        return response_data
 
     async def http_request(self, uri, method, data, host=None, scheme=None):
         """ Sends a http request to the Evonic Fire
@@ -217,7 +141,8 @@ class Evonic:
         if "light_box" not in self._device.info.modules:
             raise EvonicUnsupportedFeature("Feature Light is not supported on this device")
 
-        return await self.request(f"/voice?command=Featurelight_NOT", "GET", None)
+        await self.http_request(f"/voice?command=Featurelight_NOT", "GET", None)
+        return await self.get_device()
 
     async def set_temperature(self, temp):
         """ Sets the heater temperature on an Evonic Fire
@@ -244,7 +169,8 @@ class Evonic:
             if temp not in range(10, 33):
                 raise EvonicError(f"{temp} is not a valid value. Must be between 11 - 32")
 
-        return await self.__send_cmd(f"templevel {temp}")
+        await self.http_request(f"/cmd?command=templevel {temp}", "GET", None)
+        return await self.get_device()
 
     async def heater_power(self, cmd):
         """ Controls the Heater for the Evonic Fire.
@@ -264,9 +190,10 @@ class Evonic:
         elif cmd == "on":
             voice_command = "Heater_ON"
         else:
-            voice_command = "Heater_ON_/_OFF"
+            voice_command = "Heater_NOT"
 
-        return await self.__send_voice(voice_command)
+        await self.http_request(f"/voice?command={voice_command}", "GET", None)
+        return await self.get_device()
 
     async def get_device(self):
         """Get the device information.
@@ -280,8 +207,10 @@ class Evonic:
 
         try:
             response = await self.http_request("/config.live.json", "GET", None)
-            response_data = await response.json()
-            self._device.update_from_dict(data=response_data)
+            self._device.update_from_dict(data=await response.json())
+
+            setup_response = await self.http_request("/config.setup.json", "GET", None)
+            self._device.update_from_dict(data=await setup_response.json())
 
         except EvonicError as err:
             raise EvonicConnectionError("Unable to connect to device") from err
@@ -297,40 +226,23 @@ class Evonic:
 
         if self._device is None:
             try:
-                await self.request("/modules.json", "GET", None)
-                await self.request("/config.options.json", "GET", None)
-                await self.request("/config.admin.json", "GET", None)
+                response = await self.http_request("/modules.json", "GET", None)
+                response_data = await response.json()
+                if self._device is None:
+                    self._device = Device(response_data)
+                self._device.update_from_dict(data=response_data)
+
+                opt_response = await self.http_request("/config.options.json", "GET", None)
+                self._device.update_from_dict(data=await opt_response.json())
+
+                admin_response = await self.http_request("/config.admin.json", "GET", None)
+                self._device.update_from_dict(data=await admin_response.json())
+
                 await self.__available_effects()
             except EvonicError as err:
                 raise EvonicConnectionError("Unable to connect to device") from err
 
         return self._device
-
-    async def __send_voice(self, cmd):
-        """ Sends a command via Websocket Client.
-
-        Args:
-            cmd: The value of the voice field to send
-        """
-
-        if self._client is None:
-            raise Exception("Connect first")
-
-        LOGGER.debug(f"Sending voice command: {cmd}")
-        return await self._client.send_str(f'{{"voice":"{cmd}"}}')
-
-    async def __send_cmd(self, cmd):
-        """ Sends a command to the WebSocket of an Evonic Fire
-
-        Args:
-            cmd: The cmd value to send
-        """
-
-        if self._client is None:
-            raise Exception("Connect first")
-
-        LOGGER.debug(f"Sending standard command: {cmd}")
-        return await self._client.send_str(f'{{"cmd":"{cmd}"}}')
 
     async def __available_effects(self):
         """ Returns a list of available effects for each Evonic Fire type.
@@ -344,9 +256,10 @@ class Evonic:
 
         try:
             LOGGER.debug("Requesting paid effects")
-            response = await self.http_request(f"/effect/payed/{self._device.info.email}/{self._device.info.configs}", "GET",
-                                       None,
-                                       "evoflame.co.uk", "https")
+            response = await self.http_request(f"/effect/payed/{self._device.info.email}/{self._device.info.configs}",
+                                               "GET",
+                                               None,
+                                               "evoflame.co.uk", "https")
             paid = await response.json()
 
         except EvonicError as err:

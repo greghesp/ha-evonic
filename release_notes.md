@@ -1,5 +1,5 @@
 ### Release Notes
 
-Changes in 0.1.2:
+Changes in 0.3.0:
 
-- Sensor bug fix
+- Removing websocket connections, as this was overloading the ESP device controlling the fire, preventing it from working outside of Home Assistant
