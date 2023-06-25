@@ -58,7 +58,6 @@ class Evonic:
         if scheme is None:
             scheme = "http"
 
-        LOGGER.debug(uri)
         # url = URL.build(scheme=scheme, host=host, path=uri)
         url = f"http://{host}{uri}"
 
@@ -71,9 +70,10 @@ class Evonic:
             async with async_timeout.timeout(self.request_timeout):
                 response = await self.session.request(method, url, json=data)
                 LOGGER.debug(f"Request Response from {url}:")
-                LOGGER.debug(response)
 
             content_type = response.headers.get("Content-Type", "")
+
+            # If response is not 200, log error
             if (response.status // 100) in [4, 5]:
                 contents = await response.read()
                 response.close()
@@ -82,6 +82,7 @@ class Evonic:
                     raise EvonicError(json.loads(contents.decode("utf8")))
                 raise EvonicError(response.status, {"message": contents.decode("utf8")})
 
+            # If response is json, update the device class
             if "application/json" in content_type:
                 response_data = await response.json()
 
@@ -95,6 +96,9 @@ class Evonic:
 
                 else:
                     response_data = await response.json()
+
+            # REST API calls return template strings as text/plain for UI. Do a request to get latest info from fire
+            # after calling. TODO: Break this out so its based on the request, not response
             if "text/plain" in content_type:
                 return self.request("/config.live.json", "GET", None)
 
@@ -106,6 +110,63 @@ class Evonic:
                 f"Error occurred while communicating with Evonic device at {self.host}") from exception
 
         return response_data
+
+    async def http_request(self, uri, method, data, host=None, scheme=None):
+        """ Sends a http request to the Evonic Fire
+
+        Args:
+            uri: The URI endpoint to send request to
+            method: HTTP Method
+            data: Request Content
+            host:? Domain to call
+            scheme:? http vs https
+
+        Raises:
+            EvonicError:  Received an unexpected response from the Evonic Fire
+            EvonicConnectionTimeoutError: A timeout occurred while communicating with the Evonic Fire
+            EvonicConnectionError:  A error occurred while communicating with the Evonic Fire
+        """
+
+        if host is None:
+            host = self.host
+
+        if scheme is None:
+            scheme = "http"
+
+        LOGGER.debug(uri)
+        # url = URL.build(scheme=scheme, host=host, path=uri)
+        url = f"http://{host}{uri}"
+
+        if self.session is None:
+            LOGGER.debug("No session exists, using ClientSession")
+            self.session = aiohttp.ClientSession()
+            self._close_session = True
+
+        try:
+            async with async_timeout.timeout(self.request_timeout):
+                response = await self.session.request(method, url, json=data)
+                LOGGER.debug(f"Request Response from {url}:")
+                # LOGGER.debug(response)
+
+            content_type = response.headers.get("Content-Type", "")
+
+            # If response is not 200, log error
+            if (response.status // 100) in [4, 5]:
+                contents = await response.read()
+                response.close()
+
+                if content_type == "application/json":
+                    raise EvonicError(json.loads(contents.decode("utf8")))
+                raise EvonicError(response.status, {"message": contents.decode("utf8")})
+
+            return response
+
+        except asyncio.TimeoutError as exception:
+            raise EvonicConnectionTimeoutError(
+                f"Timeout occurred while connecting to Evonic device at {self.host}") from exception
+        except (aiohttp.ClientError, socket.gaierror) as exception:
+            raise EvonicConnectionError(
+                f"Error occurred while communicating with Evonic device at {self.host}") from exception
 
     async def power(self, cmd):
         """ Controls the main lighting for the Evonic Fire.
@@ -127,7 +188,8 @@ class Evonic:
         else:
             voice_command = "Fire_ON/OFF"
 
-        return await self.request(f"/voice?command={voice_command}", "GET", None)
+        await self.http_request(f"/voice?command={voice_command}", "GET", None)
+        return await self.get_device()
 
     async def set_effect(self, effect):
         """ Set an effect on Evonic Fire.
@@ -142,7 +204,8 @@ class Evonic:
         if effect not in self._device.effects.available_effects:
             raise EvonicUnsupportedFeature("Not a valid effect for this device")
 
-        return await self.__send_voice(effect)
+        await self.http_request(f"/voice?command={effect}", "GET", None)
+        return await self.get_device()
 
     async def toggle_feature_light(self):
         """ Toggles the feature light of an Evonic Fire
@@ -154,7 +217,7 @@ class Evonic:
         if "light_box" not in self._device.info.modules:
             raise EvonicUnsupportedFeature("Feature Light is not supported on this device")
 
-        return await self.__send_voice("Light_box")
+        return await self.request(f"/voice?command=Featurelight_NOT", "GET", None)
 
     async def set_temperature(self, temp):
         """ Sets the heater temperature on an Evonic Fire
@@ -206,7 +269,27 @@ class Evonic:
         return await self.__send_voice(voice_command)
 
     async def get_device(self):
-        """Get the initial device information.
+        """Get the device information.
+
+        Raises:
+            EvonicConnectionError:  Unable to connect to device
+        """
+
+        if self._device is None:
+            await self.get_config()
+
+        try:
+            response = await self.http_request("/config.live.json", "GET", None)
+            response_data = await response.json()
+            self._device.update_from_dict(data=response_data)
+
+        except EvonicError as err:
+            raise EvonicConnectionError("Unable to connect to device") from err
+
+        return self._device
+
+    async def get_config(self):
+        """Get the initial device configuration.
 
         Raises:
             EvonicConnectionError:  Unable to connect to device
@@ -217,9 +300,10 @@ class Evonic:
                 await self.request("/modules.json", "GET", None)
                 await self.request("/config.options.json", "GET", None)
                 await self.request("/config.admin.json", "GET", None)
-                await self.request("/config.live.json", "GET", None)
+                await self.__available_effects()
             except EvonicError as err:
                 raise EvonicConnectionError("Unable to connect to device") from err
+
         return self._device
 
     async def __send_voice(self, cmd):
@@ -253,14 +337,17 @@ class Evonic:
         Information pulled from /options.htm
         """
 
+        paid = None
+
         if self._device is None:
             raise Exception("No device initialised")
 
         try:
             LOGGER.debug("Requesting paid effects")
-            payed = await self.request(f"/effect/payed/{self._device.info.email}/{self._device.info.configs}", "GET",
+            response = await self.http_request(f"/effect/payed/{self._device.info.email}/{self._device.info.configs}", "GET",
                                        None,
                                        "evoflame.co.uk", "https")
+            paid = await response.json()
 
         except EvonicError as err:
             raise EvonicConnectionError("Unable to connect to device") from err
@@ -285,7 +372,7 @@ class Evonic:
         if configs in ["video"]:
             default_effects = ["Low", "Medium", "High"]
 
-        supported_effects = [*default_effects, *payed.get("effect")]
+        supported_effects = [*default_effects, *paid.get("effect")]
         LOGGER.debug(f"Supported effects {supported_effects}")
 
         self._device.update_from_dict({"available_effects": supported_effects})

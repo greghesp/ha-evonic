@@ -52,4 +52,5 @@ class EvonicConfigFlow(ConfigFlow, domain=DOMAIN):
     async def _async_get_device(self, host):
         session = async_get_clientsession(self.hass)
         evonic = Evonic(host, session=session)
+        await evonic.get_config()
         return await evonic.get_device()
