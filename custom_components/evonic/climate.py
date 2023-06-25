@@ -70,8 +70,7 @@ class EvonicHeater(EvonicEntity, ClimateEntity):
         if hvac_mode == HVACMode.OFF:
             await self.coordinator.evonic.heater_power("off")
 
-
-    # Temperature Control
+        await self.coordinator.async_request_refresh()
 
     @property
     def current_temperature(self) -> float:
@@ -93,6 +92,7 @@ class EvonicHeater(EvonicEntity, ClimateEntity):
             raise ValueError(f"Expected attribute {ATTR_TEMPERATURE}")
 
         await self.coordinator.evonic.set_temperature(round(kwargs[ATTR_TEMPERATURE]))
+        await self.coordinator.async_request_refresh()
 
 @callback
 def create_supported_entities(

@@ -112,8 +112,7 @@ class Evonic:
         else:
             voice_command = "Fire_ON/OFF"
 
-        await self.http_request(f"/voice?command={voice_command}", "GET", None)
-        return await self.get_device()
+        return await self.http_request(f"/voice?command={voice_command}", "GET", None)
 
     async def set_effect(self, effect):
         """ Set an effect on Evonic Fire.
@@ -141,8 +140,7 @@ class Evonic:
         if "light_box" not in self._device.info.modules:
             raise EvonicUnsupportedFeature("Feature Light is not supported on this device")
 
-        await self.http_request(f"/voice?command=Featurelight_NOT", "GET", None)
-        return await self.get_device()
+        return await self.http_request(f"/voice?command=Featurelight_NOT", "GET", None)
 
     async def set_temperature(self, temp):
         """ Sets the heater temperature on an Evonic Fire
@@ -169,8 +167,7 @@ class Evonic:
             if temp not in range(10, 33):
                 raise EvonicError(f"{temp} is not a valid value. Must be between 11 - 32")
 
-        await self.http_request(f"/cmd?command=templevel {temp}", "GET", None)
-        return await self.get_device()
+        return await self.http_request(f"/cmd?command=templevel {temp}", "GET", None)
 
     async def heater_power(self, cmd):
         """ Controls the Heater for the Evonic Fire.
@@ -192,8 +189,7 @@ class Evonic:
         else:
             voice_command = "Heater_NOT"
 
-        await self.http_request(f"/voice?command={voice_command}", "GET", None)
-        return await self.get_device()
+        return await self.http_request(f"/voice?command={voice_command}", "GET", None)
 
     async def get_device(self):
         """Get the device information.

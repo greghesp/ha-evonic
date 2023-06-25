@@ -7,6 +7,6 @@
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/greghesp/ha-evonic/issues",
   "requirements": [],
-  "version": "0.3.0"
+  "version": "0.3.1"
 }
 

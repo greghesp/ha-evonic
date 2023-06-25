@@ -56,10 +56,12 @@ class EvonicFeatureLight(EvonicEntity, LightEntity):
     async def async_turn_off(self) -> None:
         """ Turn off the power"""
         await self.coordinator.evonic.toggle_feature_light()
+        await self.coordinator.async_request_refresh()
 
     async def async_turn_on(self) -> None:
         """ Turn on the power"""
         await self.coordinator.evonic.toggle_feature_light()
+        await self.coordinator.async_request_refresh()
 
 
 class EvonicFireLight(EvonicEntity, LightEntity):
@@ -98,6 +100,7 @@ class EvonicFireLight(EvonicEntity, LightEntity):
     async def async_turn_off(self) -> None:
         """ Turn off the power"""
         await self.coordinator.evonic.power("off")
+        await self.coordinator.async_request_refresh()
 
     async def async_turn_on(self, **kwargs) -> None:
         """ Turn on the power"""
@@ -105,6 +108,8 @@ class EvonicFireLight(EvonicEntity, LightEntity):
 
         if ATTR_EFFECT in kwargs:
             await self.coordinator.evonic.set_effect(kwargs[ATTR_EFFECT])
+
+        await self.coordinator.async_request_refresh()
 
 
 @callback
