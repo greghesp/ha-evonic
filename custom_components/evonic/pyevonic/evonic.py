@@ -235,8 +235,8 @@ class Evonic:
                 admin_response = await self.http_request("/config.admin.json", "GET", None)
 
                 admin_response_data = await admin_response.json(encoding="latin-1")
-                admin_response_data['AT+RFID'] = ''
-
+                # Delete erroneous key
+                del admin_response_data['AT+RFID']
                 self._device.update_from_dict(data=admin_response_data)
 
                 await self.__available_effects()
