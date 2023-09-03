@@ -70,7 +70,7 @@ class Evonic:
             async with async_timeout.timeout(self.request_timeout):
                 response = await self.session.request(method, url, json=data)
                 LOGGER.debug(f"Request Response from {url}:")
-                # LOGGER.debug(response)
+                LOGGER.debug(await response.text(encoding="latin-1"))
 
             content_type = response.headers.get("Content-Type", "")
 
@@ -206,6 +206,7 @@ class Evonic:
             self._device.update_from_dict(data=await response.json())
 
             setup_response = await self.http_request("/config.setup.json", "GET", None)
+
             self._device.update_from_dict(data=await setup_response.json())
 
         except EvonicError as err:
@@ -232,7 +233,11 @@ class Evonic:
                 self._device.update_from_dict(data=await opt_response.json())
 
                 admin_response = await self.http_request("/config.admin.json", "GET", None)
-                self._device.update_from_dict(data=await admin_response.json())
+
+                admin_response_data = await admin_response.json(encoding="latin-1")
+                admin_response_data['AT+RFID'] = ''
+
+                self._device.update_from_dict(data=admin_response_data)
 
                 await self.__available_effects()
             except EvonicError as err:
