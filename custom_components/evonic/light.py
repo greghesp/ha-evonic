@@ -14,16 +14,14 @@ from homeassistant.components.light import (
     ATTR_EFFECT,
     ColorMode,
     LightEntity,
-    LightEntityFeature
+    LightEntityFeature,
 )
 
 PARALLEL_UPDATES = 1
 
 
 async def async_setup_entry(
-        hass: HomeAssistant,
-        entry: ConfigEntry,
-        async_add_entities: AddEntitiesCallback
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator: EvonicCoordinator = hass.data[DOMAIN][entry.entry_id]
 
@@ -31,10 +29,12 @@ async def async_setup_entry(
 
 
 class EvonicFeatureLight(EvonicEntity, LightEntity):
-    """ Defined the Feature Light """
+    """Defined the Feature Light"""
 
     _attr_icon = "mdi:led-strip-variant"
     _attr_name = "Feature Light"
+    _attr_color_mode = ColorMode.ONOFF
+    _attr_supported_color_modes = {ColorMode.ONOFF}
 
     def __init__(self, coordinator: EvonicCoordinator) -> None:
         super().__init__(coordinator=coordinator)
@@ -54,24 +54,24 @@ class EvonicFeatureLight(EvonicEntity, LightEntity):
         return bool(self.coordinator.data.light.feature_light)
 
     async def async_turn_off(self) -> None:
-        """ Turn off the power"""
+        """Turn off the power"""
         await self.coordinator.evonic.toggle_feature_light()
         await self.coordinator.async_request_refresh()
 
     async def async_turn_on(self) -> None:
-        """ Turn on the power"""
+        """Turn on the power"""
         await self.coordinator.evonic.toggle_feature_light()
         await self.coordinator.async_request_refresh()
 
 
 class EvonicFireLight(EvonicEntity, LightEntity):
-    """ Define the Fire Light.  This is the fire 'power', as it must always be on, if the Heater is on"""
+    """Define the Fire Light.  This is the fire 'power', as it must always be on, if the Heater is on"""
 
     def __init__(self, coordinator: EvonicCoordinator) -> None:
         super().__init__(coordinator=coordinator)
 
-        self._attr_support_color_modes: set[ColorMode] = set()
-        self._attr_support_color_modes.add(ColorMode.ONOFF)
+        self._attr_color_mode = ColorMode.ONOFF
+        self._attr_supported_color_modes = {ColorMode.ONOFF}
         self._attr_icon = "mdi:led-strip-variant"
         self._attr_name = "Fire Lighting"
         self._attr_supported_features = LightEntityFeature.EFFECT
@@ -84,12 +84,12 @@ class EvonicFireLight(EvonicEntity, LightEntity):
 
     @property
     def effect(self) -> str | None:
-        """ Returns the current effect """
+        """Returns the current effect"""
         return self.coordinator.data.light.effect
 
     @property
     def effect_list(self) -> list[str]:
-        """ Return a list of supported effects """
+        """Return a list of supported effects"""
 
         # Sometimes available_effects is None
         # TODO: Figure this out ^
@@ -98,12 +98,12 @@ class EvonicFireLight(EvonicEntity, LightEntity):
         return self.coordinator.data.effects.available_effects
 
     async def async_turn_off(self) -> None:
-        """ Turn off the power"""
+        """Turn off the power"""
         await self.coordinator.evonic.power("off")
         await self.coordinator.async_request_refresh()
 
     async def async_turn_on(self, **kwargs) -> None:
-        """ Turn on the power"""
+        """Turn on the power"""
         await self.coordinator.evonic.power("on")
 
         if ATTR_EFFECT in kwargs:
@@ -114,8 +114,7 @@ class EvonicFireLight(EvonicEntity, LightEntity):
 
 @callback
 def create_supported_entities(
-        coordinator: EvonicCoordinator,
-        async_add_entities: AddEntitiesCallback
+    coordinator: EvonicCoordinator, async_add_entities: AddEntitiesCallback
 ) -> None:
     supported_features = coordinator.data.info.modules
     entities_to_add: list = [EvonicFireLight(coordinator)]
