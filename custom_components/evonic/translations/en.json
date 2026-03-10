@@ -10,11 +10,26 @@
       }
     },
     "error": {
-      "cannot_connect": "Failed to connect"
+      "cannot_connect": "Failed to connect",
+      "invalid_host": "Invalid host"
     },
     "abort": {
       "already_configured": "This device is already configured",
       "cannot_connect": "Failed to connect"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Configure the address of your Evonic fireplace.",
+        "data": {
+          "host": "Host"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_host": "Invalid host"
     }
   }
 }
