@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from typing import Any
-
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from homeassistant.helpers.typing import StateType
 
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .coordinator import EvonicCoordinator
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN
 from .models import EvonicEntity
 from .pyevonic import Device as EvonicDevice
 from homeassistant.const import (
@@ -87,7 +85,7 @@ SENSORS: tuple[EvonicSensorEntityDescription, ...] = (
         name="Cost per Hour",
         entity_category=EntityCategory.DIAGNOSTIC,
         device_class=SensorDeviceClass.MONETARY,
-        state_class=SensorStateClass.MEASUREMENT,
+        state_class=SensorStateClass.TOTAL,
         value_fn=lambda device: calculate_cost(device)
     ),
     EvonicSensorEntityDescription(
@@ -142,6 +140,13 @@ class EvonicSensorEntity(EvonicEntity, SensorEntity):
         super().__init__(coordinator=coordinator)
         self.entity_description = description
         self._attr_unique_id = f"{coordinator.data.network.mac}_{description.key}"
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return HA's configured currency for monetary sensors, otherwise use the description's unit."""
+        if self.entity_description.device_class == SensorDeviceClass.MONETARY:
+            return self.hass.config.currency
+        return self.entity_description.native_unit_of_measurement
 
     @property
     def native_value(self) -> datetime | StateType:
