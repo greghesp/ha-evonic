@@ -1,5 +1,7 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/greghesp/ha-evonic/total?style=for-the-badge)
 
+![GitHub Release Date](https://img.shields.io/github/release-date/greghesp/ha-evonic?style=for-the-badge&label=Latest%20Release) [![GitHub Release](https://img.shields.io/github/v/release/greghesp/ha-evonic?style=for-the-badge)](https://github.com/greghesp/ha-evonic/releases)
 
 # Evonic Fires
 
