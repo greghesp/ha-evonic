@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-from typing import Any
-
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .coordinator import EvonicCoordinator
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN
 from .models import EvonicEntity
 from homeassistant.components.light import (
-    ATTR_BRIGHTNESS,
     ATTR_EFFECT,
     ColorMode,
     LightEntity,
@@ -42,9 +38,7 @@ class EvonicFeatureLight(EvonicEntity, LightEntity):
 
     @property
     def available(self) -> bool:
-        if self.coordinator.data.info.on:
-            return True
-        return False
+        return super().available and bool(self.coordinator.data.info.on)
 
     @property
     def is_on(self) -> bool:
@@ -55,12 +49,14 @@ class EvonicFeatureLight(EvonicEntity, LightEntity):
 
     async def async_turn_off(self) -> None:
         """Turn off the power"""
-        await self.coordinator.evonic.toggle_feature_light()
+        if self.is_on:
+            await self.coordinator.evonic.toggle_feature_light()
         await self.coordinator.async_request_refresh()
 
     async def async_turn_on(self) -> None:
         """Turn on the power"""
-        await self.coordinator.evonic.toggle_feature_light()
+        if not self.is_on:
+            await self.coordinator.evonic.toggle_feature_light()
         await self.coordinator.async_request_refresh()
 
 
@@ -91,9 +87,7 @@ class EvonicFireLight(EvonicEntity, LightEntity):
     def effect_list(self) -> list[str]:
         """Return a list of supported effects"""
 
-        # Sometimes available_effects is None
-        # TODO: Figure this out ^
-        if not type(self.coordinator.data.effects.available_effects):
+        if not self.coordinator.data.effects.available_effects:
             return ["Eos"]
         return self.coordinator.data.effects.available_effects
 
@@ -104,10 +98,12 @@ class EvonicFireLight(EvonicEntity, LightEntity):
 
     async def async_turn_on(self, **kwargs) -> None:
         """Turn on the power"""
-        await self.coordinator.evonic.power("on")
+        if not self.is_on:
+            await self.coordinator.evonic.power("on")
 
         if ATTR_EFFECT in kwargs:
             await self.coordinator.evonic.set_effect(kwargs[ATTR_EFFECT])
+            self.async_write_ha_state()
 
         await self.coordinator.async_request_refresh()
 
