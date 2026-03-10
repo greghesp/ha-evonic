@@ -1,9 +1,9 @@
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.helpers.entity import DeviceInfo
-from homeassistant.const import CONF_HOST, EVENT_HOMEASSISTANT_STOP
+from homeassistant.const import CONF_HOST
 
 from .coordinator import EvonicCoordinator
-from .const import DOMAIN, BRAND, LOGGER
+from .const import DOMAIN, BRAND
 
 
 class EvonicEntity(CoordinatorEntity[EvonicCoordinator]):

@@ -1,11 +1,9 @@
-import asyncio
-
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, EVENT_HOMEASSISTANT_STOP
-from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
+from homeassistant.const import CONF_HOST
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from .pyevonic import Device as EvonicDevice, Evonic, EvonicConnectionClosed, EvonicError
+from .pyevonic import Device as EvonicDevice, Evonic, EvonicError
 
 from .const import DOMAIN, LOGGER, SCAN_INTERVAL
 
@@ -22,8 +20,9 @@ class EvonicCoordinator(DataUpdateCoordinator[EvonicDevice]):
     async def _async_update_data(self) -> EvonicDevice:
         try:
             device = await self.evonic.get_device()
-            LOGGER.debug(device.__dict__)
         except EvonicError as error:
             raise UpdateFailed(f"Invalid response from API: {error}") from error
+        except Exception as error:
+            raise UpdateFailed(f"Unexpected error communicating with Evonic device: {error}") from error
 
         return device
