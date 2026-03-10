@@ -9,7 +9,6 @@ from dataclasses import dataclass
 
 import aiohttp
 import async_timeout
-from yarl import URL
 
 from .models import Device
 
@@ -57,8 +56,6 @@ class Evonic:
         if scheme is None:
             scheme = "http"
 
-        LOGGER.debug(uri)
-        # url = URL.build(scheme=scheme, host=host, path=uri)
         url = f"http://{host}{uri}"
 
         if self.session is None:
@@ -69,15 +66,11 @@ class Evonic:
         try:
             async with async_timeout.timeout(self.request_timeout):
                 response = await self.session.request(method, url, json=data)
-                LOGGER.debug(f"Request Response from {url}:")
-                LOGGER.debug(await response.text(encoding="latin-1"))
 
-            content_type = response.headers.get("Content-Type", "")
-
-            # If response is not 200, log error
             if (response.status // 100) in [4, 5]:
                 contents = await response.read()
                 response.close()
+                content_type = response.headers.get("Content-Type", "")
 
                 if content_type == "application/json":
                     raise EvonicError(json.loads(contents.decode("utf8")))
@@ -128,6 +121,7 @@ class Evonic:
             raise EvonicUnsupportedFeature("Not a valid effect for this device")
 
         await self.http_request(f"/voice?command={effect}", "GET", None)
+        self._device.light.effect = effect
         return await self.get_device()
 
     async def toggle_feature_light(self):
@@ -203,11 +197,12 @@ class Evonic:
 
         try:
             response = await self.http_request("/config.live.json", "GET", None)
-            self._device.update_from_dict(data=await response.json())
+            self._device.update_from_dict(data=await response.json(content_type=None))
 
             setup_response = await self.http_request("/config.setup.json", "GET", None)
-
-            self._device.update_from_dict(data=await setup_response.json())
+            setup_data = await setup_response.json(content_type=None)
+            setup_data.pop("effect", None)
+            self._device.update_from_dict(data=setup_data)
 
         except EvonicError as err:
             raise EvonicConnectionError("Unable to connect to device") from err
@@ -224,19 +219,16 @@ class Evonic:
         if self._device is None:
             try:
                 response = await self.http_request("/modules.json", "GET", None)
-                response_data = await response.json()
-                if self._device is None:
-                    self._device = Device(response_data)
-                self._device.update_from_dict(data=response_data)
+                response_data = await response.json(content_type=None)
+                self._device = Device(response_data)
 
                 opt_response = await self.http_request("/config.options.json", "GET", None)
-                self._device.update_from_dict(data=await opt_response.json())
+                self._device.update_from_dict(data=await opt_response.json(content_type=None))
 
                 admin_response = await self.http_request("/config.admin.json", "GET", None)
 
-                admin_response_data = await admin_response.json(encoding="latin-1")
-                # Delete erroneous key
-                del admin_response_data['AT+RFID']
+                admin_response_data = await admin_response.json(content_type=None, encoding="latin-1")
+                admin_response_data.pop('AT+RFID', None)
                 self._device.update_from_dict(data=admin_response_data)
 
                 await self.__available_effects()
@@ -261,7 +253,7 @@ class Evonic:
                                                "GET",
                                                None,
                                                "evoflame.co.uk", "https")
-            paid = await response.json()
+            paid = await response.json(content_type=None)
 
         except EvonicError as err:
             raise EvonicConnectionError("Unable to connect to device") from err
@@ -299,6 +291,11 @@ class Evonic:
             The Evonic object.
         """
         return self
+
+    async def close(self) -> None:
+        """Close the aiohttp session if it was created internally."""
+        if self._close_session and self.session:
+            await self.session.close()
 
     async def __aexit__(self, *_exc_info):
         """Async exit.

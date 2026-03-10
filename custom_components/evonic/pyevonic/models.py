@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
+from typing import Any
 import logging
 
 LOGGER = logging.getLogger(__name__)
@@ -32,19 +35,19 @@ class Network:
 
 @dataclass
 class Info:
-    on: str
-    ssdp: str
-    ssidAP: str
-    configs: str
-    product: str
-    buildData: str
-    last_ping: str
-    modules: []
-    email: str
+    on: Any
+    ssdp: str | None
+    ssidAP: str | None
+    configs: str | None
+    product: str | None
+    buildData: str | None
+    last_ping: str | None
+    modules: list
+    email: str | None
     cost: float
     heater_power: int
     led_power: int
-    flashChip: str
+    flashChip: str | None
 
     @staticmethod
     def from_dict(data):
@@ -58,7 +61,7 @@ class Info:
             last_ping=data.get('time'),
             modules=data.get('module'),
             email=data.get('mail'),
-            cost=float(data.get('cost', 0)),
+            cost=float(data.get('cost') or 0),
             heater_power=to_int(data.get('powerHeater')),
             led_power=to_int(data.get('powerLed')),
             flashChip=data.get('flashChip'),
@@ -75,9 +78,9 @@ class Info:
         self.modules = data.get('module', self.modules)
         self.email = data.get('mail', self.email)
         if isinstance(data.get('cost'), str):
-            self.cost = float(0);
-        else: 
-            self.cost = float(data.get('cost', self.cost));
+            self.cost = float(0)
+        else:
+            self.cost = float(data.get('cost', self.cost))
         self.heater_power = to_int(data.get('powerHeater', self.heater_power))
         self.led_power = to_int(data.get('powerLed', self.led_power))
         self.flashChip = data.get('flashChip', self.flashChip)
@@ -87,8 +90,8 @@ class Info:
 class Climate:
     current_temp: int
     target_temp: int
-    heating: bool
-    fahrenheit: bool
+    heating: Any
+    fahrenheit: int
 
     @staticmethod
     def from_dict(data):
@@ -107,13 +110,8 @@ class Climate:
 
 
 @dataclass
-class Effect:
-    name: str
-
-
-@dataclass
 class Effects:
-    available_effects: []
+    available_effects: list | None
 
     @staticmethod
     def from_dict(data):
@@ -127,8 +125,8 @@ class Effects:
 
 @dataclass
 class Light:
-    effect: Effect
-    feature_light: bool
+    effect: str | None
+    feature_light: Any
     flame_brightness: int
     flame_speed: int
     fuelbed_brightness: int
