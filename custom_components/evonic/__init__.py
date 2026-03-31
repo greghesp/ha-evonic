@@ -33,6 +33,9 @@ async def async_reload_entry(hass, entry):
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    coordinator: EvonicCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator.stop_ws_listener()
+
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         del hass.data[DOMAIN][entry.entry_id]
 

@@ -68,7 +68,9 @@ class Info:
         )
 
     def update_from_dict(self, data):
-        self.on = data.get("Fire", self.on)
+        fire_val = data.get("Fire", data.get("fire"))
+        if fire_val is not None:
+            self.on = to_int(fire_val)
         self.ssdp = data.get('SSDP', self.ssdp)
         self.ssidAP = data.get('ssidAP', self.ssidAP)
         self.configs = data.get('configs', self.configs)
@@ -105,7 +107,9 @@ class Climate:
     def update_from_dict(self, data):
         self.current_temp = to_int(data.get("temperature", self.current_temp))
         self.target_temp = to_int(data.get("templevel", self.target_temp))
-        self.heating = data.get('Heater', self.heating)
+        heater_val = data.get("Heater", data.get("heater"))
+        if heater_val is not None:
+            self.heating = to_int(heater_val)
         self.fahrenheit = to_int(data.get('fahrenheit', self.fahrenheit))
 
 
