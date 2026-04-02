@@ -33,6 +33,50 @@ class Evonic:
 
     _close_session: bool = False
     _device: Device | None = None
+    _ws: aiohttp.ClientWebSocketResponse | None = None
+
+    async def _ws_connect(self):
+        """Establish a WebSocket connection to the fireplace on port 81."""
+        if self._ws is not None and not self._ws.closed:
+            return
+
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
+            self._close_session = True
+
+        try:
+            async with async_timeout.timeout(self.request_timeout):
+                self._ws = await self.session.ws_connect(
+                    f"ws://{self.host}:81",
+                    protocols=["arduino"],
+                )
+            LOGGER.debug("WebSocket connected to %s:81", self.host)
+        except asyncio.TimeoutError as exception:
+            raise EvonicConnectionTimeoutError(
+                f"Timeout connecting WebSocket to Evonic device at {self.host}"
+            ) from exception
+        except (aiohttp.ClientError, socket.gaierror, OSError) as exception:
+            raise EvonicConnectionError(
+                f"Error connecting WebSocket to Evonic device at {self.host}"
+            ) from exception
+
+    async def _ws_send(self, msg_type: str, command: str):
+        """Send a JSON command over WebSocket.
+
+        The fireplace expects messages like: {"voice":"Fire_ON"} or {"cmd":"templevel 25"}
+        """
+        await self._ws_connect()
+
+        message = json.dumps({msg_type: command}, separators=(",", ":"))
+        LOGGER.debug("WebSocket send to %s: %s", self.host, message)
+
+        try:
+            await self._ws.send_str(message)
+        except Exception as exception:
+            self._ws = None
+            raise EvonicConnectionError(
+                f"Error sending WebSocket command to Evonic device at {self.host}"
+            ) from exception
 
     async def http_request(self, uri, method, data, host=None, scheme=None):
         """ Sends a http request to the Evonic Fire
@@ -56,7 +100,7 @@ class Evonic:
         if scheme is None:
             scheme = "http"
 
-        url = f"http://{host}{uri}"
+        url = f"{scheme}://{host}{uri}"
 
         if self.session is None:
             LOGGER.debug("No session exists, using ClientSession")
@@ -105,7 +149,7 @@ class Evonic:
         else:
             voice_command = "Fire_ON/OFF"
 
-        return await self.http_request(f"/voice?command={voice_command}", "GET", None)
+        await self._ws_send("voice", voice_command)
 
     async def set_effect(self, effect):
         """ Set an effect on Evonic Fire.
@@ -116,13 +160,52 @@ class Evonic:
         Raises:
             EvonicUnsupportedFeature: Not a valid effect for this device
         """
-        # Check effect is available for this device
         if effect not in self._device.effects.available_effects:
             raise EvonicUnsupportedFeature("Not a valid effect for this device")
 
-        await self.http_request(f"/voice?command={effect}", "GET", None)
+        await self._ws_send("effect", effect)
         self._device.light.effect = effect
         return await self.get_device()
+
+    async def set_zone_effect(self, effect: str) -> None:
+        """Set a per-zone lighting effect.
+
+        Effect names include the zone prefix, e.g. 'Flame_Spectrum', 'Top_Color', 'Ember_Aurora'.
+        """
+        await self._ws_send("voice", effect)
+
+    async def set_zone_brightness(self, zone: str, brightness: int, current_effect: str | None = None) -> None:
+        """Set brightness for a lighting zone (flame, top, or ember).
+
+        After setting the brightness parameter, re-applies the current effect
+        so the fireplace renders the change.
+        """
+        await self._ws_send("cmd", f"param add {zone}Brightness {brightness}")
+        if current_effect:
+            await self._ws_send("voice", current_effect)
+
+    async def set_zone_color(self, zone: str, hex_color: str) -> None:
+        """Set a custom RGB color for a lighting zone.
+
+        Sends the color parameter and then applies the zone's Color effect.
+        """
+        await self._ws_send("cmd", f"param add {zone}Color {hex_color}")
+        prefix = zone.capitalize()
+        await self._ws_send("voice", f"{prefix}_Color")
+
+    async def set_zone_speed(self, zone: str, speed: int, current_effect: str | None = None) -> None:
+        """Set speed/strength for a lighting zone.
+
+        After setting the speed parameter, re-applies the current effect.
+        """
+        await self._ws_send("cmd", f"param add {zone}Speed {speed}")
+        if current_effect:
+            await self._ws_send("voice", current_effect)
+
+    async def set_flame_motor_speed(self, speed: int) -> None:
+        """Set the flame motor speed."""
+        await self._ws_send("cmd", f"param add flameMotorSpeed {speed}")
+        await self._ws_send("voice", "flameMotorSpeed")
 
     async def toggle_feature_light(self):
         """ Toggles the feature light of an Evonic Fire
@@ -134,7 +217,7 @@ class Evonic:
         if "light_box" not in self._device.info.modules:
             raise EvonicUnsupportedFeature("Feature Light is not supported on this device")
 
-        return await self.http_request(f"/voice?command=Featurelight_NOT", "GET", None)
+        await self._ws_send("voice", "Featurelight_NOT")
 
     async def set_temperature(self, temp):
         """ Sets the heater temperature on an Evonic Fire
@@ -161,7 +244,7 @@ class Evonic:
             if temp not in range(10, 33):
                 raise EvonicError(f"{temp} is not a valid value. Must be between 11 - 32")
 
-        return await self.http_request(f"/cmd?command=templevel {temp}", "GET", None)
+        await self._ws_send("cmd", f"templevel {temp}")
 
     async def heater_power(self, cmd):
         """ Controls the Heater for the Evonic Fire.
@@ -183,7 +266,7 @@ class Evonic:
         else:
             voice_command = "Heater_NOT"
 
-        return await self.http_request(f"/voice?command={voice_command}", "GET", None)
+        await self._ws_send("voice", voice_command)
 
     async def get_device(self):
         """Get the device information.
@@ -242,7 +325,7 @@ class Evonic:
         Information pulled from /options.htm
         """
 
-        paid = None
+        paid_effects = []
 
         if self._device is None:
             raise Exception("No device initialised")
@@ -254,9 +337,10 @@ class Evonic:
                                                None,
                                                "evoflame.co.uk", "https")
             paid = await response.json(content_type=None)
+            paid_effects = paid.get("effect") or []
 
-        except EvonicError as err:
-            raise EvonicConnectionError("Unable to connect to device") from err
+        except Exception as err:
+            LOGGER.warning("Failed to fetch paid effects from evoflame.co.uk, continuing with defaults: %s", err)
 
         configs = self._device.info.configs
         default_effects = ["Vero", "Ignite", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange",
@@ -278,7 +362,7 @@ class Evonic:
         if configs in ["video"]:
             default_effects = ["Low", "Medium", "High"]
 
-        supported_effects = [*default_effects, *paid.get("effect")]
+        supported_effects = [*default_effects, *paid_effects]
         LOGGER.debug(f"Supported effects {supported_effects}")
 
         self._device.update_from_dict({"available_effects": supported_effects})
@@ -293,7 +377,10 @@ class Evonic:
         return self
 
     async def close(self) -> None:
-        """Close the aiohttp session if it was created internally."""
+        """Close WebSocket and aiohttp session."""
+        if self._ws is not None and not self._ws.closed:
+            await self._ws.close()
+            self._ws = None
         if self._close_session and self.session:
             await self.session.close()
 

@@ -68,7 +68,9 @@ class Info:
         )
 
     def update_from_dict(self, data):
-        self.on = data.get("Fire", self.on)
+        fire_val = data.get("Fire", data.get("fire"))
+        if fire_val is not None:
+            self.on = to_int(fire_val)
         self.ssdp = data.get('SSDP', self.ssdp)
         self.ssidAP = data.get('ssidAP', self.ssidAP)
         self.configs = data.get('configs', self.configs)
@@ -105,22 +107,36 @@ class Climate:
     def update_from_dict(self, data):
         self.current_temp = to_int(data.get("temperature", self.current_temp))
         self.target_temp = to_int(data.get("templevel", self.target_temp))
-        self.heating = data.get('Heater', self.heating)
+        heater_val = data.get("Heater", data.get("heater"))
+        if heater_val is not None:
+            self.heating = to_int(heater_val)
         self.fahrenheit = to_int(data.get('fahrenheit', self.fahrenheit))
 
 
 @dataclass
 class Effects:
     available_effects: list | None
+    flame_effects: list | None
+    top_effects: list | None
+    ember_effects: list | None
 
     @staticmethod
     def from_dict(data):
         return Effects(
-            available_effects=data.get('available_effects')
+            available_effects=data.get('available_effects'),
+            flame_effects=data.get('flameList'),
+            top_effects=data.get('topList'),
+            ember_effects=data.get('emberList'),
         )
 
     def update_from_dict(self, data):
         self.available_effects = data.get('available_effects', self.available_effects)
+        if 'flameList' in data:
+            self.flame_effects = data['flameList']
+        if 'topList' in data:
+            self.top_effects = data['topList']
+        if 'emberList' in data:
+            self.ember_effects = data['emberList']
 
 
 @dataclass
@@ -129,27 +145,75 @@ class Light:
     feature_light: Any
     flame_brightness: int
     flame_speed: int
-    fuelbed_brightness: int
-    fuelbed_speed: int
+    flame_effect: str | None
+    flame_color: str | None
+    top_brightness: int
+    top_speed: int
+    top_effect: str | None
+    top_color: str | None
+    ember_brightness: int
+    ember_speed: int
+    ember_effect: str | None
+    ember_color: str | None
+    flame_motor_speed: int
 
     @staticmethod
     def from_dict(data):
         return Light(
             effect=data.get("effect"),
             feature_light=data.get("pinout3"),
-            flame_brightness=to_int(data.get("brightnessRGB0")),
-            flame_speed=to_int(data.get("speedRGB0")),
-            fuelbed_brightness=to_int(data.get("brightnessRGB1")),
-            fuelbed_speed=to_int(data.get("speedRGB1")),
+            flame_brightness=to_int(data.get("brightnessRGB0") or data.get("flameBrightness")),
+            flame_speed=to_int(data.get("speedRGB0") or data.get("flameSpeed")),
+            flame_effect=data.get("flame"),
+            flame_color=data.get("flameColor"),
+            top_brightness=to_int(data.get("brightnessRGB1") or data.get("topBrightness")),
+            top_speed=to_int(data.get("speedRGB1") or data.get("topSpeed")),
+            top_effect=data.get("top"),
+            top_color=data.get("topColor"),
+            ember_brightness=to_int(data.get("emberBrightness")),
+            ember_speed=to_int(data.get("emberSpeed")),
+            ember_effect=data.get("ember"),
+            ember_color=data.get("emberColor"),
+            flame_motor_speed=to_int(data.get("flameMotorSpeed")),
         )
 
     def update_from_dict(self, data):
         self.effect = data.get("effect", self.effect)
         self.feature_light = data.get("pinout3", self.feature_light)
-        self.flame_brightness = to_int(data.get("brightnessRGB0", self.flame_brightness))
-        self.flame_speed = to_int(data.get("speedRGB0", self.flame_speed))
-        self.fuelbed_brightness = to_int(data.get("brightnessRGB1", self.fuelbed_brightness))
-        self.fuelbed_speed = to_int(data.get("speedRGB1", self.fuelbed_speed))
+        if "brightnessRGB0" in data:
+            self.flame_brightness = to_int(data["brightnessRGB0"])
+        if "flameBrightness" in data:
+            self.flame_brightness = to_int(data["flameBrightness"])
+        if "speedRGB0" in data:
+            self.flame_speed = to_int(data["speedRGB0"])
+        if "flameSpeed" in data:
+            self.flame_speed = to_int(data["flameSpeed"])
+        if "flame" in data:
+            self.flame_effect = data["flame"]
+        if "flameColor" in data:
+            self.flame_color = data["flameColor"]
+        if "brightnessRGB1" in data:
+            self.top_brightness = to_int(data["brightnessRGB1"])
+        if "topBrightness" in data:
+            self.top_brightness = to_int(data["topBrightness"])
+        if "speedRGB1" in data:
+            self.top_speed = to_int(data["speedRGB1"])
+        if "topSpeed" in data:
+            self.top_speed = to_int(data["topSpeed"])
+        if "top" in data:
+            self.top_effect = data["top"]
+        if "topColor" in data:
+            self.top_color = data["topColor"]
+        if "emberBrightness" in data:
+            self.ember_brightness = to_int(data["emberBrightness"])
+        if "emberSpeed" in data:
+            self.ember_speed = to_int(data["emberSpeed"])
+        if "ember" in data:
+            self.ember_effect = data["ember"]
+        if "emberColor" in data:
+            self.ember_color = data["emberColor"]
+        if "flameMotorSpeed" in data:
+            self.flame_motor_speed = to_int(data["flameMotorSpeed"])
 
 
 class Device:
