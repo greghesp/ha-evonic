@@ -163,9 +163,49 @@ class Evonic:
         if effect not in self._device.effects.available_effects:
             raise EvonicUnsupportedFeature("Not a valid effect for this device")
 
-        await self._ws_send("voice", effect)
+        await self._ws_send("effect", effect)
         self._device.light.effect = effect
         return await self.get_device()
+
+    async def set_zone_effect(self, effect: str) -> None:
+        """Set a per-zone lighting effect.
+
+        Effect names include the zone prefix, e.g. 'Flame_Spectrum', 'Top_Color', 'Ember_Aurora'.
+        """
+        await self._ws_send("voice", effect)
+
+    async def set_zone_brightness(self, zone: str, brightness: int, current_effect: str | None = None) -> None:
+        """Set brightness for a lighting zone (flame, top, or ember).
+
+        After setting the brightness parameter, re-applies the current effect
+        so the fireplace renders the change.
+        """
+        await self._ws_send("cmd", f"param add {zone}Brightness {brightness}")
+        if current_effect:
+            await self._ws_send("voice", current_effect)
+
+    async def set_zone_color(self, zone: str, hex_color: str) -> None:
+        """Set a custom RGB color for a lighting zone.
+
+        Sends the color parameter and then applies the zone's Color effect.
+        """
+        await self._ws_send("cmd", f"param add {zone}Color {hex_color}")
+        prefix = zone.capitalize()
+        await self._ws_send("voice", f"{prefix}_Color")
+
+    async def set_zone_speed(self, zone: str, speed: int, current_effect: str | None = None) -> None:
+        """Set speed/strength for a lighting zone.
+
+        After setting the speed parameter, re-applies the current effect.
+        """
+        await self._ws_send("cmd", f"param add {zone}Speed {speed}")
+        if current_effect:
+            await self._ws_send("voice", current_effect)
+
+    async def set_flame_motor_speed(self, speed: int) -> None:
+        """Set the flame motor speed."""
+        await self._ws_send("cmd", f"param add flameMotorSpeed {speed}")
+        await self._ws_send("voice", "flameMotorSpeed")
 
     async def toggle_feature_light(self):
         """ Toggles the feature light of an Evonic Fire

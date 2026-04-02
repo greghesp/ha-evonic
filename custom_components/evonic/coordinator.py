@@ -46,6 +46,7 @@ class EvonicCoordinator(DataUpdateCoordinator[EvonicDevice]):
                 await self.evonic._ws_connect()
                 LOGGER.debug("WebSocket listener active on %s:81", self.evonic.host)
                 await self.evonic._ws_send("cmd", "get modules")
+                await self.evonic._ws_send("cmd", "get effectList")
 
                 while self.evonic._ws is not None and not self.evonic._ws.closed:
                     msg = await self.evonic._ws.receive()
