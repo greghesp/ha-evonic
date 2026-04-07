@@ -242,23 +242,27 @@ class Evonic:
         Information pulled from /options.htm
         """
 
-        paid = None
+        paid_effects = []
 
         if self._device is None:
             raise Exception("No device initialised")
 
+        LOGGER.debug("Requesting paid effects for email=%s configs=%s", self._device.info.email, self._device.info.configs)
         try:
-            LOGGER.debug("Requesting paid effects")
             response = await self.http_request(f"/effect/payed/{self._device.info.email}/{self._device.info.configs}",
                                                "GET",
                                                None,
                                                "evoflame.co.uk", "https")
             paid = await response.json(content_type=None)
+            paid_effects = paid.get("effect") or []
+            LOGGER.debug("Paid effects response: %s", paid)
+            LOGGER.debug("Paid effects resolved: %s", paid_effects)
 
-        except EvonicError as err:
-            raise EvonicConnectionError("Unable to connect to device") from err
+        except Exception as err:
+            LOGGER.warning("Failed to fetch paid effects from evoflame.co.uk, continuing with defaults: %s", err)
 
         configs = self._device.info.configs
+        LOGGER.debug("Resolving default effects for configs=%s", configs)
         default_effects = ["Vero", "Ignite", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange",
                            "Green", "Blue", "Violet", "White"]
 
@@ -278,7 +282,7 @@ class Evonic:
         if configs in ["video"]:
             default_effects = ["Low", "Medium", "High"]
 
-        supported_effects = [*default_effects, *paid.get("effect")]
+        supported_effects = [*default_effects, *paid_effects]
         LOGGER.debug(f"Supported effects {supported_effects}")
 
         self._device.update_from_dict({"available_effects": supported_effects})
