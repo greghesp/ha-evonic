@@ -56,7 +56,7 @@ class Evonic:
         if scheme is None:
             scheme = "http"
 
-        url = f"http://{host}{uri}"
+        url = f"{scheme}://{host}{uri}"
 
         if self.session is None:
             LOGGER.debug("No session exists, using ClientSession")
@@ -197,11 +197,14 @@ class Evonic:
 
         try:
             response = await self.http_request("/config.live.json", "GET", None)
-            self._device.update_from_dict(data=await response.json(content_type=None))
+            live_data = await response.json(content_type=None)
+            live_data.pop("available_effects", None)
+            self._device.update_from_dict(data=live_data)
 
             setup_response = await self.http_request("/config.setup.json", "GET", None)
             setup_data = await setup_response.json(content_type=None)
             setup_data.pop("effect", None)
+            setup_data.pop("available_effects", None)
             self._device.update_from_dict(data=setup_data)
 
         except EvonicError as err:
