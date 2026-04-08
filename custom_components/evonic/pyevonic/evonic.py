@@ -5,7 +5,8 @@ import asyncio
 import json
 import socket
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 
 import aiohttp
 import async_timeout
@@ -33,6 +34,7 @@ class Evonic:
 
     _close_session: bool = False
     _device: Device | None = None
+    _effects_last_fetched: datetime | None = field(default=None, init=False)
 
     async def http_request(self, uri, method, data, host=None, scheme=None):
         """ Sends a http request to the Evonic Fire
@@ -207,6 +209,13 @@ class Evonic:
         except EvonicError as err:
             raise EvonicConnectionError("Unable to connect to device") from err
 
+        effects_stale = (
+            self._effects_last_fetched is None or
+            datetime.now() - self._effects_last_fetched > timedelta(hours=1)
+        )
+        if effects_stale:
+            await self.__available_effects()
+
         return self._device
 
     async def get_config(self):
@@ -231,7 +240,6 @@ class Evonic:
                 admin_response_data.pop('AT+RFID', None)
                 self._device.update_from_dict(data=admin_response_data)
 
-                await self.__available_effects()
             except EvonicError as err:
                 raise EvonicConnectionError("Unable to connect to device") from err
 
@@ -283,10 +291,10 @@ class Evonic:
             default_effects = ["Low", "Medium", "High"]
 
         supported_effects = [*default_effects, *paid_effects]
-        LOGGER.debug(f"Supported effects {supported_effects}")
+        LOGGER.debug("Supported effects: %s", supported_effects)
 
         self._device.update_from_dict({"available_effects": supported_effects})
-        return
+        self._effects_last_fetched = datetime.now()
 
     async def __aenter__(self):
         """Async enter.
