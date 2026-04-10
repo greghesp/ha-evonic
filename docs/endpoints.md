@@ -7,6 +7,8 @@ The device exposes two control interfaces:
 
 Both interfaces are real device endpoints. The HTTP endpoints are also used by the Alexa integration but are not exclusive to it.
 
+For a full breakdown of which features are supported per device model, see [device-features.md](device-features.md).
+
 ---
 
 ## WebSocket Connection
@@ -54,6 +56,9 @@ Send as: `{"cmd": "<command string>"}`
 | `get timer.save` | Request the full timer list | Returns `timer` array and current `time` |
 | `time {datetime}` | Set the RTC clock | `datetime`: formatted string e.g. `Dec 25 2023 07:30:00 GMT+0000` (from `Date.toString()`) |
 | `set_chanal_rcp {channel}` | Set remote control pairing channel | `channel`: 1–128 |
+| `effect_next` | Cycle to next effect | |
+| `effect_last` | Cycle to previous effect | |
+| `save_effect` | Persist the current effect to storage | |
 
 #### Mood Light Effect IDs
 
@@ -95,6 +100,15 @@ Send as: `{"voice": "<command>"}`
 | `Fire_OFF` | Turn fire off | Used by timer scheduler |
 | `Heater_ON` | Turn heater on | Used by timer scheduler |
 | `Heater_OFF` | Turn heater off | Used by timer scheduler |
+| `Fire_Heater_ON` | Turn fire and heater on simultaneously | |
+| `Featurelight_NOT` | Toggle feature light | Same as `Light_box` on most models |
+| `Moodlight_ON` | Turn mood light on | Requires `ml0`/`ml1` module |
+| `Moodlight_OFF` | Turn mood light off | Requires `ml0`/`ml1` module |
+| `effect_next` | Cycle to next effect | |
+| `effect_last` | Cycle to previous effect | |
+| `upgrade_stable` | Trigger OTA upgrade (stable channel) | Requires `upgrade` module |
+| `upgrade_beta` | Trigger OTA upgrade (beta channel) | Requires `admin` module |
+| `upgrade_alpha` | Trigger OTA upgrade (alpha channel) | Requires `admin` module |
 
 ---
 
@@ -103,6 +117,36 @@ Send as: `{"voice": "<command>"}`
 Send as: `{"effect": "<EffectName>"}`
 
 Sets the active effect by name. Used for effects from the custom `effectList` (all-caps names indicate user-created effects).
+
+---
+
+### Remote Control & IR Button Mapping
+
+The physical RF remote and IR remote send `voice` commands using hex codes. The device's scenary file maps these to actions. The full mapping from `scenaryrcp.txt` and `scenaryir.txt`:
+
+| RCP Code | IR Code | Action |
+|----------|---------|--------|
+| `rcp04on` | `E0E040BF` / `E0E06798` | Toggle fire on/off |
+| `rcp02on` | `E0E058A7` | Toggle feature light |
+| `rcp01on` | `E0E06F90` | RGB0 brightness up (+16) |
+| `rcp03on` | `E0E04BB4` | RGB0 brightness down (−16) |
+| `rcp0Aon` | `E0E09D62` | RGB1 brightness up (+16) |
+| `rcp0Bon` | `E0E01AE5` | RGB1 brightness down (−16) |
+| `rcp05on` | `E0E006F9` | Temperature up (+1) |
+| `rcp09on` | `E0E08679` | Temperature down (−1) |
+| `rcp13on` | `E0E0CF30` | Thermostat minimum |
+| `rcp12on` | `E0E02FD0` | Thermostat mid |
+| `rcp11on` | `E0E03DC2` | Thermostat maximum |
+| `rcp06on` | `E0E016E9` | Toggle heater on/off |
+| `rcp08on` | `E0E046B9` | Heater timer up (+15 min) |
+| `rcp07on` | `E0E0A659` | Heater timer down (−15 min) |
+| `rcp0Con` | `E0E09E61` | Toggle fuelbed RGB (rgb not 1) |
+| `rcp0Don` | `E0E008F7` | Next effect |
+| `rcp0Fon` | `E0E048B7` | Previous effect |
+| `rcp0Eon` | `E0E0E01F` | Volume up (+1) |
+| `rcp10on` | `E0E0D02F` | Volume down (−1) |
+
+> These codes arrive at the device as `voice` commands and are processed by the scenary engine. They are not typically sent from Home Assistant directly.
 
 ---
 
@@ -136,6 +180,8 @@ The device pushes state updates as JSON objects. Fields present depend on what c
 | Field | Type | Description |
 |---|---|---|
 | `pinout3` | `0` or `1` | Feature light box state |
+| `Moodlight` | `0` or `1` | Mood light on/off state |
+| `alarmtemperature` | `0` or `1` | Temperature alarm active (overheating protection triggered) |
 | `brightnessRGB0` | 0–255 | Flame zone brightness |
 | `brightnessRGB1` | 0–255 | Log/Top zone brightness |
 | `brightnessRGB2` | 0–255 | Ember/FuelBed zone brightness |
@@ -315,6 +361,24 @@ All requests are `GET` to `http://{device_ip}/`.
 | `GET /restart?device=ok` | Reboot the device | Equivalent to `reboot ok` WebSocket command |
 | `GET /config?restore=ok` | Factory reset the device | Clears all settings and returns to AP mode |
 | `GET /auth?pass={password}` | Authenticate for admin access | Returns `allowed` or error string |
+| `GET /setscenary` | Reload and apply the active scenary file | Call after writing to the scenary file via `/edit` |
+
+### Admin Endpoints
+
+Require admin authentication (`GET /auth?pass={password}` first).
+
+| Endpoint | Description |
+|---|---|
+| `GET /admin/config?rfc={rfc}&ssdp={ssdp}&logo={logo}&configs={model}&restore=ok` | Save admin config (device name, brand logo, model variant) |
+| `GET /admin/device?rfc={rfc}&ssdp={ssdp}&logo={logo}&configs={model}&restore=ok` | Alternative admin device save endpoint |
+
+| Parameter | Type | Description |
+|---|---|---|
+| `rfc` | string | Device RFC/identifier |
+| `ssdp` | string | Device SSDP name |
+| `logo` | int | Brand logo index (0=Evonic, 1=Element4, 2=European Home, 3=Regency, 4=Ortal, 5=Aura, 6=Micon) |
+| `configs` | string | Device model variant (e.g. `hal1500`) — determines scenary, effects, and UI |
+| `restore` | `ok` | Must be `ok` to apply changes |
 
 ### Device Settings Endpoints
 
@@ -531,19 +595,24 @@ GET /ssdp.list.json/{token}   (local relay)
 
 ## Default Effects by Config Variant
 
-These are the hardcoded effects available per device type, before paid effects are appended.
+These are the built-in effects per device type, before paid effects are appended. The `s` suffix variants (e.g. `electra1500s`) share the same effects as their non-`s` counterpart. See [device-features.md](device-features.md) for the full per-model feature matrix.
 
 | Config(s) | Default Effects |
 |---|---|
-| `evonicfires`, `1800`, `ds1030`, `hal800`, `hal1030`, `hal1500`, `hal2400`, `halev4`, `halev8`, `irpanel`, `v630`, `v730`, `v1030` | Eos, Vero, Ignite, Breathe, Spectrum, Embers, Odyssey, Aurora, Red, Orange, Green, Blue, Violet, White |
+| `evonicfires`, `1800`, `dh1500`, `hal800`, `hal1030`, `hal1500`, `hal2400`, `halev4`, `halev8`, `v630`, `v730`, `v1030` | Eos, Ignite, Vero, Breathe, Spectrum, Embers, Odyssey, Aurora, Red, Orange, Green, Blue, Violet, White |
+| `ds1030` | Eos, Ignite, Vero, Breathe, Spectrum, Embers, Odyssey, Aurora, Red, Orange, **Yellow**, Green, Blue, Violet, White |
 | `alisio850`, `alisio1150`, `alisio1550`, `alisio1850` | Ilusion, Aurora, Patriot, Verona, Charm, Viva, Cocktail, Campfire, Royal, Scarlett, Lava, Magma |
-| `alente`, `e500`, `e800`, `e1030`, `e1250`, `e1500`, `e1800`, `e2400` | Evoflame, Party |
+| `ilusion2` | Ilusion, Aurora, Patriot, Verona, Charm, Viva, Cocktail, Campfire |
+| `e500`, `e800`, `e1030`, `e1250`, `e1500`, `e1800`, `e2400` | Evoflame, Party |
+| `alente` | Eseries, Party |
 | `sl600`, `sl700`, `sl1000`, `sl1250`, `sl1500` | Ignite, Fiesta |
 | `electra1030`, `electra1250`, `electra1350`, `electra1500`, `electra1800`, `chin1800`, `rot1250`, `rot1500` | Gold, Orbit, Ignite, Vero, Spectrum, Embers, Red, Green, Blue, Violet, White |
 | `electrac1`, `electrac600` | Gold, Ignite, Vero, Spectrum, Embers, Red, Green, Blue, Violet, White |
-| `aurac1` | Gold |
+| `aurac1`, `aurac1s` | Gold |
+| `sf1`, `sf1-40`, `sf2`, `sf3` | Low, Medium, High |
 | `video`, `videonew` | Amsterdam, London, NewYork |
 | All others (fallback) | Vero, Ignite, Breathe, Spectrum, Embers, Odyssey, Aurora, Red, Orange, Green, Blue, Violet, White |
 
-> **Note:** Config types `eseries` and `ilusion` hide the effects picker entirely in the native UI.
-> Config types `sf*` and `videonew` use a simplified UI with no navigation or brightness controls.
+> **Note:** Config types `eseries` and `ilusion` (v1) hide the effects picker entirely in the native UI.
+> Config types `sf*` use flame intensity presets (Low/Medium/High) rather than colour effects, and have no effect cycling or brightness control.
+> Config type `videonew` uses a simplified UI with no navigation or brightness controls.
