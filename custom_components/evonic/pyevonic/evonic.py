@@ -336,52 +336,20 @@ class Evonic:
         return self._device
 
     async def __available_effects(self):
-        """ Returns a list of available effects for each Evonic Fire type.
-        Information pulled from /options.htm
-        """
-
-        paid_effects = []
+        """ Returns a list of available effects by querying the device directly. """
 
         if self._device is None:
             raise Exception("No device initialised")
 
-        LOGGER.debug("Requesting paid effects for email=%s configs=%s", self._device.info.email, self._device.info.configs)
+        LOGGER.debug("Requesting available effects from device")
         try:
-            response = await self.http_request(f"/effect/payed/{self._device.info.email}/{self._device.info.configs}",
-                                               "GET",
-                                               None,
-                                               "evoflame.co.uk", "https")
-            paid = await response.json(content_type=None)
-            paid_effects = paid.get("effect") or []
-            LOGGER.debug("Paid effects response: %s", paid)
-            LOGGER.debug("Paid effects resolved: %s", paid_effects)
-
+            response = await self.request("/effect.json", "GET", None)
+            data = await response.json(content_type=None)
+            supported_effects = data.get("effect") or []
+            LOGGER.debug("Device effects response: %s", supported_effects)
         except Exception as err:
-            LOGGER.warning("Failed to fetch paid effects from evoflame.co.uk, continuing with defaults: %s", err)
-
-        configs = self._device.info.configs
-        LOGGER.debug("Resolving default effects for configs=%s", configs)
-        default_effects = ["Vero", "Ignite", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange",
-                           "Green", "Blue", "Violet", "White"]
-
-        if configs in ["1800", "ds1030", "hal800", "hal1030", "hal1500", "hal2400", "halev4",
-                       "halev8", "irpanel", "v630", "v730", "v1030"]:
-            default_effects.insert(0, "Eos")
-
-        if configs in ["ilusion2", "alisio1150", "alisio1550", "alisio1850", "alisio850"]:
-            default_effects = ["Ilusion", "Aurora", "Patriot", "Verona", "Charm", "Viva", "Cocktail", "Campfire"]
-
-        if configs in ["alente", "e1030", "e1250", "e1500", "e1800", "e2400", "e500", "e800"] and configs != "1800":
-            default_effects = ["Evoflame", "Party"]
-
-        if configs in ["sl600", "sl700", "sl1000", "sl1250", "sl1500"]:
-            default_effects = ["Ignite", "Fiesta"]
-
-        if configs in ["video"]:
-            default_effects = ["Low", "Medium", "High"]
-
-        supported_effects = [*default_effects, *paid_effects]
-        LOGGER.debug("Supported effects: %s", supported_effects)
+            LOGGER.warning("Failed to fetch effects from device, falling back to empty list: %s", err)
+            supported_effects = []
 
         self._device.update_from_dict({"available_effects": supported_effects})
         self._effects_last_fetched = datetime.now()
