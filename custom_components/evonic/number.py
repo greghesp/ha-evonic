@@ -32,7 +32,7 @@ class EvonicTemperatureOffset(EvonicEntity, NumberEntity):
     waiting for the next poll cycle.
     """
 
-    _attr_name = "Temperature Offset"
+    _attr_name = "Offset"
     _attr_icon = "mdi:thermometer-check"
     _attr_entity_category = EntityCategory.CONFIG
     _attr_native_min_value = -10
