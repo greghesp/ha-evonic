@@ -5,7 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.const import UnitOfTemperature
 from .coordinator import EvonicCoordinator
-from .const import DOMAIN
+from .const import DOMAIN, CONF_TEMP_OFFSET
 from .models import EvonicEntity
 from homeassistant.components.climate import (
     ClimateEntity,
@@ -45,15 +45,21 @@ class EvonicHeater(EvonicEntity, ClimateEntity):
         self._update_temperature_unit()
         super()._handle_coordinator_update()
 
+    @property
+    def _temp_offset(self) -> int:
+        """Return the configured temperature offset."""
+        return self.coordinator.config_entry.options.get(CONF_TEMP_OFFSET, 0)
+
     def _update_temperature_unit(self) -> None:
+        offset = self._temp_offset
         if self.coordinator.data.climate.fahrenheit:
             self._attr_temperature_unit = UnitOfTemperature.FAHRENHEIT
-            self._attr_min_temp = 50.0
-            self._attr_max_temp = 90.0
+            self._attr_min_temp = 50.0 + offset
+            self._attr_max_temp = 90.0 + offset
         else:
             self._attr_temperature_unit = UnitOfTemperature.CELSIUS
-            self._attr_min_temp = 11.0
-            self._attr_max_temp = 32.0
+            self._attr_min_temp = 11.0 + offset
+            self._attr_max_temp = 32.0 + offset
 
     # HVAC Control
 
@@ -79,16 +85,17 @@ class EvonicHeater(EvonicEntity, ClimateEntity):
 
     @property
     def current_temperature(self) -> float | None:
-        """Return the current temperature in the device's unit."""
+        """Return the current temperature in the device's unit, with offset applied."""
         if not isinstance(self.coordinator.data.climate.current_temp, int):
             return None
-        return float(self.coordinator.data.climate.current_temp)
+        return float(self.coordinator.data.climate.current_temp) + self._temp_offset
 
     @property
     def target_temperature(self) -> float | None:
         """Return the target temperature in the device's unit.
-        The device always stores the target in Celsius, so convert to
-        Fahrenheit when the device is in Fahrenheit mode."""
+        No offset is applied — the target represents the user's desired setpoint
+        in real-world terms. The device always stores the target in Celsius, so
+        convert to Fahrenheit when the device is in Fahrenheit mode."""
         if not isinstance(self.coordinator.data.climate.target_temp, int):
             return None
         temp = float(self.coordinator.data.climate.target_temp)
@@ -97,12 +104,16 @@ class EvonicHeater(EvonicEntity, ClimateEntity):
         return temp
 
     async def async_set_temperature(self, **kwargs) -> None:
-        """Set new target temperature. HA sends in the entity's declared unit,
-        but the device always expects Celsius for the setpoint."""
+        """Set new target temperature. The user sets a real-world target; we
+        compensate by adding the inverse of the offset before commanding the
+        device, so the device's thermostat reaches the correct physical temperature.
+        The device always expects Celsius for the setpoint."""
         if "temperature" not in kwargs:
             raise ValueError(f"Expected attribute 'temperature'")
 
-        temp = round(kwargs["temperature"])
+        # Compensate for the sensor offset: if sensor reads high (negative offset),
+        # we tell the device to target a higher value so it keeps heating long enough.
+        temp = round(kwargs["temperature"]) - self._temp_offset
         if self.coordinator.data.climate.fahrenheit:
             temp = round((temp - 32) * 5 / 9)
 
