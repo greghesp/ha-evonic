@@ -3,9 +3,15 @@
   "name": "Evonic",
   "codeowners": ["@greghesp"],
   "config_flow": true,
+  "dependencies": ["ssdp"],
   "documentation": "https://github.com/greghesp/ha-evonic",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/greghesp/ha-evonic/issues",
   "requirements": [],
+  "ssdp": [
+    {
+      "modelURL": "http://evoflame.co.uk"
+    }
+  ],
   "version": "0.3.5"
 }

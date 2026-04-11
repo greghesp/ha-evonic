@@ -7,6 +7,9 @@
         "data": {
           "host": "[%key:common::config_flow::data::host%]"
         }
+      },
+      "ssdp_confirm": {
+        "description": "Do you want to set up {name} ({host})?"
       }
     },
     "error": {
