@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.components.ssdp import SsdpServiceInfo, ATTR_UPNP_FRIENDLY_NAME
+from homeassistant.components import ssdp
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.data_entry_flow import FlowResult
@@ -68,10 +68,10 @@ class EvonicConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors or {},
         )
 
-    async def async_step_ssdp(self, discovery_info: SsdpServiceInfo) -> FlowResult:
+    async def async_step_ssdp(self, discovery_info: ssdp.SsdpServiceInfo) -> FlowResult:
         """Handle SSDP discovery."""
         host = str(urlparse(discovery_info.ssdp_location).hostname)
-        friendly_name = discovery_info.upnp.get(ATTR_UPNP_FRIENDLY_NAME, host)
+        friendly_name = discovery_info.upnp.get(ssdp.ATTR_UPNP_FRIENDLY_NAME, host)
 
         await self.async_set_unique_id(discovery_info.ssdp_udn)
         self._abort_if_unique_id_configured(updates={CONF_HOST: host})
