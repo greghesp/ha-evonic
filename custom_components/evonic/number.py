@@ -57,12 +57,27 @@ class EvonicTemperatureOffset(EvonicEntity, NumberEntity):
         return float(self.coordinator.config_entry.options.get(CONF_TEMP_OFFSET, 0))
 
     async def async_set_native_value(self, value: float) -> None:
-        """Persist the new offset and immediately update all entities."""
+        """Persist the new offset, recalculate the device setpoint, and update all entities."""
+        new_offset = int(value)
+
+        # Re-send the target temperature with the new offset applied so the
+        # device setpoint stays consistent with the user's intended HA target.
+        target_temp = self.coordinator.data.climate.target_temp
+        if isinstance(target_temp, int):
+            fahrenheit = self.coordinator.data.climate.fahrenheit
+            # Convert device target (always Celsius) to the display unit
+            ha_target = round(target_temp * 9 / 5 + 32) if fahrenheit else target_temp
+            # Apply new offset and convert back to Celsius for the device
+            device_target = ha_target - new_offset
+            if fahrenheit:
+                device_target = round((device_target - 32) * 5 / 9)
+            await self.coordinator.evonic.set_temperature(device_target)
+
         self.hass.config_entries.async_update_entry(
             self.coordinator.config_entry,
             options={
                 **self.coordinator.config_entry.options,
-                CONF_TEMP_OFFSET: int(value),
+                CONF_TEMP_OFFSET: new_offset,
             },
         )
         # Signal all coordinator-backed entities (including the climate entity)
