@@ -4,6 +4,10 @@ Derived from firmware `configs/*.txt` files on the device SPIFFS filesystem.
 These files define the physical hardware wiring, LED configuration, and enabled
 modules for each device model.
 
+> **Note:** These configs were extracted from a live device and may reflect
+> user modifications rather than factory defaults. In particular, `ADMIN` mode
+> is not enabled by default on any retail model — it must be manually enabled.
+
 ## Universal GPIO Pin Mapping
 
 The following GPIO assignments are **identical across all models**:
@@ -746,8 +750,6 @@ the physical width of the firebox. All other GPIO assignments remain constant.
 **Power:** Heater 1513W · LED 23W
 
 **Modules:** `light_box` (feature light), `shop` (paid effects), `cost` (energy tracking)
-
-**Admin mode:** Enabled
 
 #### `hal2400`
 
