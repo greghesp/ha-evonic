@@ -1,6 +1,84 @@
 """Asynchronous Python client for Evonic Fires."""
 from __future__ import annotations
 
+# Built-in effects per model config, derived from docs/device-features.md.
+# Used as the base effect list; any additional effects returned by /effect.json
+# (e.g. purchased effects) are appended after these.
+DEFAULT_EFFECTS: dict[str, list[str]] = {
+    # Aura
+    "aurac1":       ["Gold"],
+    "aurac1s":      ["Gold"],
+    # Element4 Electra
+    "electra1030":  ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "electra1030s": ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "electra1250":  ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "electra1250s": ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "electra1350":  ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "electra1350s": ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "electra1500":  ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "electra1500s": ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "electra1800":  ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "electra1800s": ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "electra850s":  ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    # Element4 Electrac
+    "electrac1":    ["Gold", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "electrac1s":   ["Gold", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "electrac600":  ["Gold", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "electrac600s": ["Gold", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    # European Home
+    "e1030":        ["Evoflame", "Party"],
+    "e1250":        ["Evoflame", "Party"],
+    "e1500":        ["Evoflame", "Party"],
+    "e1800":        ["Evoflame", "Party"],
+    "e2400":        ["Evoflame", "Party"],
+    "e500":         ["Evoflame", "Party"],
+    "e800":         ["Evoflame", "Party"],
+    # Evonic Generic / 1800
+    "evonicfires":  ["Eos", "Ignite", "Vero", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange", "Green", "Blue", "Violet", "White"],
+    "1800":         ["Eos", "Ignite", "Vero", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange", "Green", "Blue", "Violet", "White"],
+    # Evonic Alente
+    "alente":       ["Eseries", "Party"],
+    # Evonic Chin
+    "chin1800":     ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "chin1800s":    ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    # Evonic DH
+    "dh1500":       ["Eos", "Ignite", "Vero", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange", "Green", "Blue", "Violet", "White"],
+    # Evonic DS
+    "ds1030":       ["Eos", "Ignite", "Vero", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange", "Yellow", "Green", "Blue", "Violet", "White"],
+    # Evonic HAL
+    "hal1030":      ["Eos", "Ignite", "Vero", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange", "Green", "Blue", "Violet", "White"],
+    "hal1500":      ["Eos", "Ignite", "Vero", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange", "Green", "Blue", "Violet", "White"],
+    "hal2400":      ["Eos", "Ignite", "Vero", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange", "Green", "Blue", "Violet", "White"],
+    "hal800":       ["Eos", "Ignite", "Vero", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange", "Green", "Blue", "Violet", "White"],
+    "halev4":       ["Eos", "Ignite", "Vero", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange", "Green", "Blue", "Violet", "White"],
+    "halev8":       ["Eos", "Ignite", "Vero", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange", "Green", "Blue", "Violet", "White"],
+    # Evonic Ilusion
+    "ilusion2":     ["Ilusion", "Aurora", "Patriot", "Verona", "Charm", "Viva", "Cocktail", "Campfire"],
+    # Evonic ROT
+    "rot1250":      ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    "rot1500":      ["Gold", "Orbit", "Ignite", "Vero", "Spectrum", "Embers", "Red", "Green", "Blue", "Violet", "White"],
+    # Evonic SF
+    "sf1":          ["Low", "Medium", "High"],
+    "sf1-40":       ["Low", "Medium", "High"],
+    "sf2":          ["Low", "Medium", "High"],
+    "sf3":          ["Low", "Medium", "High"],
+    # Evonic SL
+    "sl1000":       ["Ignite", "Fiesta"],
+    "sl1250":       ["Ignite", "Fiesta"],
+    "sl1500":       ["Ignite", "Fiesta"],
+    "sl600":        ["Ignite", "Fiesta"],
+    "sl700":        ["Ignite", "Fiesta"],
+    # Evonic V-Series
+    "v1030":        ["Eos", "Ignite", "Vero", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange", "Green", "Blue", "Violet", "White"],
+    "v630":         ["Eos", "Ignite", "Vero", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange", "Green", "Blue", "Violet", "White"],
+    "v730":         ["Eos", "Ignite", "Vero", "Breathe", "Spectrum", "Embers", "Odyssey", "Aurora", "Red", "Orange", "Green", "Blue", "Violet", "White"],
+    # Micon Alisio
+    "alisio1150":   ["Ilusion", "Aurora", "Patriot", "Verona", "Charm", "Viva", "Cocktail", "Campfire", "Royal", "Scarlett", "Lava", "Magma"],
+    "alisio1550":   ["Ilusion", "Aurora", "Patriot", "Verona", "Charm", "Viva", "Cocktail", "Campfire", "Royal", "Scarlett", "Lava", "Magma"],
+    "alisio1850":   ["Ilusion", "Aurora", "Patriot", "Verona", "Charm", "Viva", "Cocktail", "Campfire", "Royal", "Scarlett", "Lava", "Magma"],
+    "alisio850":    ["Ilusion", "Aurora", "Patriot", "Verona", "Charm", "Viva", "Cocktail", "Campfire", "Royal", "Scarlett", "Lava", "Magma"],
+}
+
 import asyncio
 import json
 import socket
@@ -336,21 +414,34 @@ class Evonic:
         return self._device
 
     async def __available_effects(self):
-        """ Returns a list of available effects by querying the device directly. """
+        """ Returns a list of available effects for the device.
+
+        Starts with the known built-in effects for the model (from DEFAULT_EFFECTS),
+        then appends any additional effects returned by /effect.json that are not
+        already in that list (e.g. purchased effects synced via the Evonic app).
+        """
 
         if self._device is None:
             raise Exception("No device initialised")
 
-        LOGGER.debug("Requesting available effects from device")
+        configs = self._device.info.configs
+        base_effects = list(DEFAULT_EFFECTS.get(configs, []))
+        LOGGER.debug("Base effects for configs=%s: %s", configs, base_effects)
+
         try:
             response = await self.request("/effect.json", "GET", None)
             data = await response.json(content_type=None)
-            supported_effects = data.get("effect") or []
-            LOGGER.debug("Device effects response: %s", supported_effects)
+            device_effects = data.get("effect") or []
+            LOGGER.debug("Device effects response: %s", device_effects)
         except Exception as err:
-            LOGGER.warning("Failed to fetch effects from device, falling back to empty list: %s", err)
-            supported_effects = []
+            LOGGER.warning("Failed to fetch effects from device: %s", err)
+            device_effects = []
 
+        base_set = set(base_effects)
+        extra_effects = [e for e in device_effects if e not in base_set]
+        supported_effects = base_effects + extra_effects
+
+        LOGGER.debug("Supported effects: %s", supported_effects)
         self._device.update_from_dict({"available_effects": supported_effects})
         self._effects_last_fetched = datetime.now()
 
