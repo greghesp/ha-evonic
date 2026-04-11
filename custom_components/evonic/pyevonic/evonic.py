@@ -7,6 +7,7 @@ import socket
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from urllib.parse import urlparse, parse_qs
 
 import aiohttp
 import async_timeout
@@ -65,6 +66,8 @@ class Evonic:
             self.session = aiohttp.ClientSession()
             self._close_session = True
 
+        LOGGER.debug("Sending HTTP %s request to %s", method, url)
+
         try:
             async with async_timeout.timeout(self.request_timeout):
                 response = await self.session.request(method, url, json=data)
@@ -78,14 +81,94 @@ class Evonic:
                     raise EvonicError(json.loads(contents.decode("utf8")))
                 raise EvonicError(response.status, {"message": contents.decode("utf8")})
 
+            LOGGER.debug("HTTP request to %s completed with status %s", url, response.status)
             return response
 
         except asyncio.TimeoutError as exception:
+            LOGGER.error("Timeout communicating with Evonic device at %s (url=%s)", self.host, url)
             raise EvonicConnectionTimeoutError(
                 f"Timeout occurred while connecting to Evonic device at {self.host}") from exception
         except (aiohttp.ClientError, socket.gaierror) as exception:
+            LOGGER.error("Error communicating with Evonic device at %s (url=%s): %s", self.host, url, exception)
             raise EvonicConnectionError(
                 f"Error occurred while communicating with Evonic device at {self.host}") from exception
+
+    async def ws_request(self, uri):
+        """Send a command to the Evonic Fire via WebSocket.
+
+        Opens a connection, sends the command, then closes immediately.
+        Only supports /voice and /cmd endpoints.
+
+        Args:
+            uri: The URI endpoint (e.g. /voice?command=Fire_ON)
+
+        Raises:
+            EvonicConnectionError: Unable to communicate via WebSocket
+            EvonicConnectionTimeoutError: A timeout occurred while communicating
+        """
+        parsed = urlparse(uri)
+        command_type = parsed.path.lstrip("/")  # "voice" or "cmd"
+        params = parse_qs(parsed.query)
+        command_value = params.get("command", [None])[0]
+
+        if command_value is None:
+            raise EvonicConnectionError(f"Cannot convert URI to WebSocket command: {uri}")
+
+        message = json.dumps({command_type: command_value})
+        ws_url = f"ws://{self.host}:81"
+
+        if self.session is None:
+            LOGGER.debug("No session exists, using ClientSession")
+            self.session = aiohttp.ClientSession()
+            self._close_session = True
+
+        LOGGER.debug("Connecting to WebSocket at %s, sending: %s", ws_url, message)
+
+        try:
+            async with async_timeout.timeout(self.request_timeout):
+                async with self.session.ws_connect(ws_url, protocols=["arduino"]) as ws:
+                    await ws.send_str(message)
+                    LOGGER.debug("WebSocket message sent to %s, closing connection", ws_url)
+        except asyncio.TimeoutError as exception:
+            LOGGER.error("Timeout connecting to Evonic device at %s via WebSocket", self.host)
+            raise EvonicConnectionTimeoutError(
+                f"Timeout occurred while connecting to Evonic device at {self.host} via WebSocket") from exception
+        except (aiohttp.ClientError, socket.gaierror) as exception:
+            LOGGER.error("Error communicating with Evonic device at %s via WebSocket: %s", self.host, exception)
+            raise EvonicConnectionError(
+                f"Error occurred while communicating with Evonic device at {self.host} via WebSocket") from exception
+
+    async def request(self, uri, method, data, host=None, scheme=None):
+        """Send a request to the Evonic Fire, falling back to WebSocket if HTTP fails.
+
+        Args:
+            uri: The URI endpoint
+            method: HTTP Method
+            data: Request Content
+            host: Domain to call (WebSocket fallback only used for local device requests)
+            scheme: http vs https
+
+        Returns:
+            HTTP response if HTTP succeeded, None if WebSocket fallback was used.
+
+        Raises:
+            EvonicConnectionError: Both HTTP and WebSocket requests failed
+        """
+        try:
+            return await self.http_request(uri, method, data, host, scheme)
+        except (EvonicConnectionError, EvonicConnectionTimeoutError) as err:
+            if host is not None:
+                raise
+
+            LOGGER.warning("HTTP request to %s failed, falling back to WebSocket: %s", uri, err)
+            try:
+                await self.ws_request(uri)
+                LOGGER.debug("WebSocket fallback succeeded for %s", uri)
+                return None
+            except (EvonicConnectionError, EvonicConnectionTimeoutError) as ws_err:
+                LOGGER.error(
+                    "WebSocket fallback also failed for %s: %s", uri, ws_err)
+                raise
 
     async def power(self, cmd):
         """ Controls the main lighting for the Evonic Fire.
@@ -107,7 +190,8 @@ class Evonic:
         else:
             voice_command = "Fire_ON/OFF"
 
-        return await self.http_request(f"/voice?command={voice_command}", "GET", None)
+        LOGGER.debug("Sending fire power command: %s", voice_command)
+        return await self.request(f"/voice?command={voice_command}", "GET", None)
 
     async def set_effect(self, effect):
         """ Set an effect on Evonic Fire.
@@ -122,7 +206,8 @@ class Evonic:
         if effect not in self._device.effects.available_effects:
             raise EvonicUnsupportedFeature("Not a valid effect for this device")
 
-        await self.http_request(f"/voice?command={effect}", "GET", None)
+        LOGGER.debug("Setting effect: %s", effect)
+        await self.request(f"/voice?command={effect}", "GET", None)
         self._device.light.effect = effect
         return await self.get_device()
 
@@ -136,7 +221,8 @@ class Evonic:
         if "light_box" not in self._device.info.modules:
             raise EvonicUnsupportedFeature("Feature Light is not supported on this device")
 
-        return await self.http_request(f"/voice?command=Featurelight_NOT", "GET", None)
+        LOGGER.debug("Toggling feature light")
+        return await self.request(f"/voice?command=Featurelight_NOT", "GET", None)
 
     async def set_temperature(self, temp):
         """ Sets the heater temperature on an Evonic Fire
@@ -163,7 +249,8 @@ class Evonic:
             if temp not in range(10, 33):
                 raise EvonicError(f"{temp} is not a valid value. Must be between 11 - 32")
 
-        return await self.http_request(f"/cmd?command=templevel {temp}", "GET", None)
+        LOGGER.debug("Setting temperature to %s", temp)
+        return await self.request(f"/cmd?command=templevel {temp}", "GET", None)
 
     async def heater_power(self, cmd):
         """ Controls the Heater for the Evonic Fire.
@@ -185,7 +272,8 @@ class Evonic:
         else:
             voice_command = "Heater_NOT"
 
-        return await self.http_request(f"/voice?command={voice_command}", "GET", None)
+        LOGGER.debug("Sending heater power command: %s", voice_command)
+        return await self.request(f"/voice?command={voice_command}", "GET", None)
 
     async def get_device(self):
         """Get the device information.
@@ -197,6 +285,7 @@ class Evonic:
         if self._device is None:
             await self.get_config()
 
+        LOGGER.debug("Fetching device state from %s", self.host)
         try:
             response = await self.http_request("/config.live.json", "GET", None)
             self._device.update_from_dict(data=await response.json(content_type=None))
@@ -226,6 +315,7 @@ class Evonic:
         """
 
         if self._device is None:
+            LOGGER.debug("Fetching initial device configuration from %s", self.host)
             try:
                 response = await self.http_request("/modules.json", "GET", None)
                 response_data = await response.json(content_type=None)
