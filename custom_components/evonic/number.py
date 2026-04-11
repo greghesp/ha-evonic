@@ -5,6 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.helpers.entity import EntityCategory
+from homeassistant.const import UnitOfTemperature
 
 from .coordinator import EvonicCoordinator
 from .const import DOMAIN, CONF_TEMP_OFFSET
@@ -32,7 +33,7 @@ class EvonicTemperatureOffset(EvonicEntity, NumberEntity):
     """
 
     _attr_name = "Temperature Offset"
-    _attr_icon = "mdi:thermometer-plus-outline"
+    _attr_icon = "mdi:thermometer-check"
     _attr_entity_category = EntityCategory.CONFIG
     _attr_native_min_value = -10
     _attr_native_max_value = 10
@@ -42,6 +43,13 @@ class EvonicTemperatureOffset(EvonicEntity, NumberEntity):
     def __init__(self, coordinator: EvonicCoordinator) -> None:
         super().__init__(coordinator=coordinator)
         self._attr_unique_id = f"{coordinator.data.info.ssdp}_temp_offset"
+
+    @property
+    def native_unit_of_measurement(self) -> str:
+        """Return the unit matching the device's temperature setting."""
+        if self.coordinator.data.climate.fahrenheit:
+            return UnitOfTemperature.FAHRENHEIT
+        return UnitOfTemperature.CELSIUS
 
     @property
     def native_value(self) -> float:
