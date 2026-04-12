@@ -70,16 +70,12 @@ class EvonicConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_ssdp(self, discovery_info: ssdp.SsdpServiceInfo) -> FlowResult:
         """Handle SSDP discovery."""
+        LOGGER.debug("SSDP discovery triggered for Evonic: %s", discovery_info)
         host = str(urlparse(discovery_info.ssdp_location).hostname)
         friendly_name = discovery_info.upnp.get(ssdp.ATTR_UPNP_FRIENDLY_NAME, host)
 
         await self.async_set_unique_id(discovery_info.ssdp_udn)
         self._abort_if_unique_id_configured(updates={CONF_HOST: host})
-
-        try:
-            await self._async_get_device(host)
-        except (EvonicConnectionError, OSError, asyncio.TimeoutError):
-            return self.async_abort(reason="cannot_connect")
 
         self._host = host
         self._friendly_name = friendly_name
@@ -90,11 +86,21 @@ class EvonicConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Confirm SSDP discovery."""
+        errors = {}
+
         if user_input is not None:
-            return self.async_create_entry(
-                title=self._friendly_name,
-                data={CONF_HOST: self._host},
-            )
+            try:
+                await self._async_get_device(self._host)
+            except (EvonicConnectionError, OSError, asyncio.TimeoutError):
+                errors["base"] = "cannot_connect"
+            except Exception:
+                LOGGER.exception("Unexpected error connecting to Evonic host")
+                errors["base"] = "cannot_connect"
+            else:
+                return self.async_create_entry(
+                    title=self._friendly_name,
+                    data={CONF_HOST: self._host},
+                )
 
         return self.async_show_form(
             step_id="ssdp_confirm",
@@ -102,6 +108,7 @@ class EvonicConfigFlow(ConfigFlow, domain=DOMAIN):
                 "name": self._friendly_name,
                 "host": self._host,
             },
+            errors=errors,
         )
 
     async def _async_get_device(self, host):
