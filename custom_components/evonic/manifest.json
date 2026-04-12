@@ -11,6 +11,9 @@
   "ssdp": [
     {
       "modelURL": "http://evoflame.co.uk"
+    },
+    {
+      "manufacturerURL": "https://evonicfires.co.uk"
     }
   ],
   "version": "0.3.5"
